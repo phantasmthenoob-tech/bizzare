@@ -42,6 +42,9 @@ public final class TidalCoreManager {
     private final Map<UUID, Integer> cubesByOwner = new HashMap<>();
     private final Set<UUID> internalTeleports = ConcurrentHashMap.newKeySet();
 
+    /** True while a cube is applying its own drowning damage. */
+    private boolean applyingCoreDamage;
+
     private BukkitTask task;
 
     public TidalCoreManager(TidalSurgerPlugin plugin) {
@@ -169,6 +172,19 @@ public final class TidalCoreManager {
 
     public boolean isInternalTeleport(Player player) {
         return internalTeleports.contains(player.getUniqueId());
+    }
+
+    /** Marks the start of the plugin's own drowning damage (see the protection listener). */
+    public void beginCoreDamage() {
+        applyingCoreDamage = true;
+    }
+
+    public void endCoreDamage() {
+        applyingCoreDamage = false;
+    }
+
+    public boolean isApplyingCoreDamage() {
+        return applyingCoreDamage;
     }
 
     public boolean isTrapped(Entity entity) {

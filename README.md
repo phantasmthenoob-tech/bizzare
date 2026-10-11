@@ -68,11 +68,13 @@ sneak + right-click while holding the trident.
 ## 4. Abilities
 
 ### Tidal Surf — offhand key, 30 s cooldown
-* Raises a flowing wave under the caster and carries them forward for ~5.5 s
-  (`duration-ticks`, default 110).
+* Raises a flowing wave in front of the caster and carries them forward for exactly 5 s
+  (`duration-ticks`, default 100).
+* The wave leads: its crest and its real temporary water ride 2–4 blocks ahead of the surfer
+  (`water-offset: 3`), so the ride reads as a bow wave with the surfer in its wake.
 * Steerable: the carry direction follows the player's current yaw every tick.
 * Blue water particles (`SPLASH`, `DOLPHIN`, `BUBBLE`, `FALLING_WATER`) form an animated crest,
-  foam and a wake; a real temporary water trail is placed under the surfer and restored as it fades.
+  foam and a wake; a real temporary water trail is placed ahead of the surfer and restored as it fades.
 * **No fall damage**: fall distance is reset every tick during the ride, and fall damage stays
   cancelled for `fall-immunity-ticks` (45 ticks ≈ 2.25 s) after the ride ends.
 
@@ -86,24 +88,31 @@ A 10x10 water cube that hovers over the target's head, drops on them, and drowns
    can just jog out from under it. Drips fall from its underside and the victim is warned.
 2. **Drop** — the whole cube falls, one block every `fall-step-ticks` (2), throwing spray off its
    leading edge, until its floor reaches `landing-offset` (2) blocks below the target's feet.
-3. **Contain + drown (5 s, `duration-ticks: 100`)** — the victims are sealed in and take **3 hearts
-   (6 HP, `total-damage: 6.0`)** of `minecraft:drown` damage spread over the five seconds in five
-   1.2 HP ticks. The damage is applied directly, so **the breath bar, water breathing, respiration,
-   armour and invulnerability frames cannot change it** — with `ignore-breath-bar: true` the air
-   meter is kept full and never becomes the mechanic. Bubbles burst off the victim on every tick.
+3. **Contain + drown (5 s, `duration-ticks: 100`)** — the victims are sealed in and genuinely drown:
+   with `drain-breath-bar: true` their **breath bar empties to zero**, bubbles burst off them and the
+   drowning sound plays, and they take **exactly 3 hearts (6 HP, `total-damage: 6.0`)** of
+   `minecraft:drown` damage spread over the five seconds in five 1.2 HP ticks. Vanilla's own
+   drowning ticks are suppressed while the cube delivers the exact total, so water breathing,
+   respiration and armour cannot change what the ability deals, and with `suppress-natural-regen:
+   true` **natural hunger regeneration is paused while sealed — the three hearts actually stay
+   lost** for the whole window (potions, golden apples and plugins can still heal).
 
 * The victim can swim freely inside the cube but never through its boundary, and **cannot escape
   with ender pearls, chorus fruit, `/tp`, `/teleport` or another plugin's teleport** — every
   teleport out of the cube is refused and every movement packet that would cross the boundary is
   clamped back inside (backed up by a per-tick containment pass).
+* **The water itself is inescapable**: anyone inside when it lands *or who enters it while it is
+  active* is sealed (`trap-all-inside`) and death is the only release — dying removes the victim
+  from the cube instead of dragging them back on respawn.
 * The **cube's owner is completely unaffected**: they are never trapped, they can swim straight
   through the barrier to attack the victim, and they additionally receive water breathing and
   dolphin's grace while inside their own cube (`owner-water-breathing: true`).
 * Visuals: dark-blue glowing edges (`SOUL_FIRE_FLAME` + `SCULK_SOUL`), aqua corner bursts and an
   inner swirling helix (`DOLPHIN`, `ELECTRIC_SPARK`), ambient water particles, a top splash ring,
   hover drips and a falling spray. Every particle is configurable.
-* When the 5 seconds are up the cube collapses, the victims are released safely (no fall damage, no
-  momentum, a message each) and **every changed block is restored byte-for-byte**.
+* When the 5 seconds are up the cube collapses, the victims are released safely (no fall damage —
+  anyone still off the ground is set down with a short slow-falling grace — no momentum, a message
+  each) and **every changed block is restored byte-for-byte**.
 * `height` is separate from `size`, so `size: 10` with `height: 4` gives a wide flat water slab
   instead of a cube if you prefer.
 
@@ -161,13 +170,14 @@ The plugin never permanently changes or destroys the world:
 * **general** — `debug` console logging.
 * **input** — `cancel-vanilla-swap`, `sneak-grace-millis`, `require-item-in-main-hand`,
   `right-click-fallback`, `show-item-cooldown`.
-* **abilities.tidal-surf** — `enabled`, `permission`, `cooldown-seconds`, `duration-ticks`, `speed`,
-  `lift`, `max-rise`, `max-fall`, `wave-width`, `place-water`, `water-fade-ticks`,
+* **abilities.tidal-surf** — `enabled`, `permission`, `cooldown-seconds`, `duration-ticks`
+  (100 = 5 s), `speed`, `lift`, `max-rise`, `max-fall`, `wave-width`, `water-offset` (blocks in
+  front of the surfer the wave and its water ride), `place-water`, `water-fade-ticks`,
   `fall-immunity-ticks`, `sounds`.
 * **abilities.tidal-core** — `enabled`, `permission`, `cooldown-seconds`, `size`, `height`,
   `hover-height`, `hover-ticks`, `landing-offset`, `hover-tracking`, `reanchor-threshold`,
   `reanchor-interval-ticks`, `fall-step-ticks`, `duration-ticks`, `total-damage`,
-  `damage-interval-ticks`, `ignore-breath-bar`, `damage-credit-owner`, `sounds`,
+  `damage-interval-ticks`, `drain-breath-bar`, `suppress-natural-regen`, `damage-credit-owner`, `sounds`,
   `max-target-distance`, `trap-all-inside`, `trap-players`, `trap-mobs`, `block-ender-pearls`,
   `block-teleport-commands`, `owner-water-breathing`, `render-interval`, `edge-step`,
   `edge-particles`, `accent-particles`, `ambient-particles`, `skip-materials`.
@@ -228,7 +238,10 @@ src/main/java/com/tidalsurger/
   * `Shift + F` → Tidal Core starts and a `[x,y,z -> x,y,z]` cube is created around the target.
   * A second F press while riding reports `You are already riding the tide`, and the ability's own
     30 s / 90 s cooldowns are enforced independently.
-  * The carry motion for the surfer is delivered at 20 packets/second with the configured speed.
+  * The ride lasts **exactly 5.0 s** (100 ticks, measured 5007 ms end to end), the carry motion is
+    delivered at **99 `entity_velocity` packets over the 100 ticks** with the configured 0.78 speed,
+    and the wave's real water sits **2–4 blocks in front of the surfer** while riding and is fully
+    restored (0 blocks left) after the ride fades.
   * The victim is sealed (`trapped=1`), keeps getting pushed back at the boundary while sprinting
     and jumping into it, and a `COMMAND` teleport (`/tp`) out of the cube is refused with
     `The tidal barrier refuses to let you pass.`
@@ -237,15 +250,24 @@ src/main/java/com/tidalsurger/
     `/ts cubes` is empty again.
   * The custom crafting recipe is registered (`/recipe give <player> tidalsurger:tidal_surger`
     unlocks it) and `/ts reload` can be run repeatedly without a duplicate-recipe error.
-* Tidal Core, with a real second player as the victim:
-  * `Shift + F` casts it and the victim is warned; the cube reports `phase=hover` (for example
-    `world[2,-58,-11->11,-49,-2] phase=hover trapped=0`) with its floor at head height, and is still
-    hovering a second later (2.5 s hover).
-  * It then drops four blocks and reports `phase=contain trapped=1`.
-  * Over the five contained seconds it deals **5 hits of 1.2 HP = exactly 6 HP = 3 hearts** of
-    `minecraft:drown` damage, with `air=300/300` on every single hit — proving the breath bar is not
-    the mechanism. The victim never left the cube (0.00 blocks of excursion) and survived.
-  * After the five seconds the cube reports `No active water cubes` and the victim is released.
+* Tidal Core, with a real second player as the victim (server-side damage events logged by a test
+  plugin, positions read from a real client):
+  * `Shift + F` casts it and the victim is warned; the cube reports `phase=hover` first, then drops
+    and reports `phase=contain trapped=1`.
+  * Over the five contained seconds it deals **5 hits of 1.2 HP = exactly 6.00 HP = 3 hearts** of
+    `minecraft:drown` damage. The victim's breath bar is **genuinely empty (`air=0/300`) on every
+    hit**, and their health falls exactly 20 → 18.8 → 17.6 → 16.4 → 15.2 (pre-hit values), proving
+    natural regeneration never heals any of it back while sealed; every natural-regen attempt is
+    logged as cancelled. The victim is still 3 hearts down (≈14.2 HP) right after the window.
+  * **Nothing can get out**: sprinting + jumping into the boundary produced **0.00 blocks of
+    excursion** for the targeted victim, and a second player teleported into the water after it
+    landed was sealed too (`trapped=2`) and could not swim back out.
+  * A `/tp` out is refused with `The tidal barrier refuses to let you pass.`
+  * **Death is a release**: with the victim killed inside, the cube immediately drops them from its
+    trapped list (still `phase=contain`) and the respawn is not dragged back into the water.
+  * When the five seconds elapse the cube reports `No active water cubes`; the victim is released
+    safely with a short slow-falling grace and **takes no fall or other extra damage** — the 3
+    hearts of drowning are the only damage the ability deals.
 * World-safety test on a real world, driving the **full hover -> drop -> contain** lifecycle: the
   cube changed 1000 blocks to water while hovering, dropped four blocks, preserved a solid stone
   block and the **text of a sign** inside the cube, and after the collapse every one of the 6069

@@ -73,6 +73,7 @@ public final class PluginSettings {
         public final double maxRise;
         public final double maxFall;
         public final int waveWidth;
+        public final int waterOffset;
         public final boolean placeWater;
         public final int waterFadeTicks;
         public final int fallImmunityTicks;
@@ -83,12 +84,13 @@ public final class PluginSettings {
             this.enabled = config.getBoolean(base + "enabled", true);
             this.permission = config.getString(base + "permission", AbilityType.TIDAL_SURF.defaultPermission());
             this.cooldownSeconds = Math.max(0, config.getInt(base + "cooldown-seconds", 30));
-            this.durationTicks = Math.max(20, config.getInt(base + "duration-ticks", 110));
+            this.durationTicks = Math.max(20, config.getInt(base + "duration-ticks", 100));
             this.speed = clamp(config.getDouble(base + "speed", 0.78), 0.05, 3.0);
             this.lift = clamp(config.getDouble(base + "lift", 0.22), 0.0, 1.0);
             this.maxRise = clamp(config.getDouble(base + "max-rise", 0.45), 0.0, 2.0);
             this.maxFall = clamp(config.getDouble(base + "max-fall", -0.28), -2.0, 0.0);
             this.waveWidth = Math.max(0, Math.min(3, config.getInt(base + "wave-width", 1)));
+            this.waterOffset = Math.max(0, Math.min(6, config.getInt(base + "water-offset", 3)));
             this.placeWater = config.getBoolean(base + "place-water", true);
             this.waterFadeTicks = Math.max(2, config.getInt(base + "water-fade-ticks", 14));
             this.fallImmunityTicks = Math.max(0, config.getInt(base + "fall-immunity-ticks", 45));
@@ -113,7 +115,8 @@ public final class PluginSettings {
         public final int durationTicks;
         public final double totalDamage;
         public final int damageIntervalTicks;
-        public final boolean ignoreBreathBar;
+        public final boolean drainBreathBar;
+        public final boolean suppressNaturalRegen;
         public final boolean damageCreditOwner;
         public final boolean sounds;
         public final int maxTargetDistance;
@@ -147,7 +150,8 @@ public final class PluginSettings {
             this.durationTicks = Math.max(20, config.getInt(base + "duration-ticks", 100));
             this.totalDamage = Math.max(0.0D, config.getDouble(base + "total-damage", 6.0D));
             this.damageIntervalTicks = Math.max(1, config.getInt(base + "damage-interval-ticks", 20));
-            this.ignoreBreathBar = config.getBoolean(base + "ignore-breath-bar", true);
+            this.drainBreathBar = config.getBoolean(base + "drain-breath-bar", true);
+            this.suppressNaturalRegen = config.getBoolean(base + "suppress-natural-regen", true);
             this.damageCreditOwner = config.getBoolean(base + "damage-credit-owner", true);
             this.sounds = config.getBoolean(base + "sounds", true);
             this.maxTargetDistance = Math.max(4, Math.min(120, config.getInt(base + "max-target-distance", 30)));

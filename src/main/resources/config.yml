@@ -46,8 +46,8 @@ abilities:
     enabled: true
     permission: tidalsurger.ability.surf
     cooldown-seconds: 30
-    # How long the ride lasts (20 ticks = 1 second).
-    duration-ticks: 110
+    # How long the ride lasts (20 ticks = 1 second). 100 ticks = 5 seconds.
+    duration-ticks: 100
     # Forward carry speed in blocks per tick.
     speed: 0.78
     # Upward bump applied while touching a surface (the wave's crest).
@@ -56,6 +56,10 @@ abilities:
     max-fall: -0.28
     # 1 => a 3-block-wide wave, 2 => 5 blocks wide.
     wave-width: 1
+    # The wave leads: its crest and its temporary water ride this many blocks in
+    # front of the surfer (2-4 reads best), so the ride is a bow wave the surfer
+    # travels in the wake of.
+    water-offset: 3
     # Spawn real (temporary, fully restored) water under the surfer.
     place-water: true
     # Ticks before a spawned wave block is put back exactly as it was.
@@ -95,9 +99,15 @@ abilities:
     total-damage: 6.0
     # One damage tick every N ticks: 100 ticks / 20 = 5 hits of 1.2 health = 3 hearts.
     damage-interval-ticks: 20
-    # Keeps the victim's breath bar full and drives all damage from the plugin, so the
-    # air meter, water breathing, respiration and armour cannot change the damage.
-    ignore-breath-bar: true
+    # Empty the victim's breath bar while they are sealed, so the drowning is real:
+    # the air meter drains to zero and bubbles burst off them. The damage itself is
+    # still delivered by the plugin at exactly total-damage (6.0 = 3 hearts) of
+    # minecraft:drown, so water breathing, respiration and armour cannot change it.
+    drain-breath-bar: true
+    # Pause natural (hunger) regeneration while a victim is sealed, so the three
+    # hearts of drowning damage actually stay lost for the whole window instead of
+    # being healed back during it.
+    suppress-natural-regen: true
     # Credit the drowning kills to whoever cast the cube. The damage type stays
     # minecraft:drown either way; with this off the Bukkit cause is DROWNING instead
     # of ENTITY_ATTACK (useful if another plugin filters drowning damage).
@@ -105,7 +115,9 @@ abilities:
     # Play the growl, splash and impact sounds.
     sounds: true
     max-target-distance: 30
-    # Trap every living entity that stands inside the cube when it forms.
+    # Trap every living entity found in the water - when the cube forms and any
+    # time one enters it - so the barrier cannot be walked or swum through while
+    # it is active.
     trap-all-inside: true
     trap-players: true
     trap-mobs: true

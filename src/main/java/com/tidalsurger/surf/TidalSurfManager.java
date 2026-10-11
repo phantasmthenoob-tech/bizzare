@@ -31,10 +31,12 @@ import java.util.UUID;
 /**
  * <b>Tidal Surf</b> - the offhand-key ability.
  *
- * <p>Raises a flowing wave under the caster and carries them forward for about
- * five seconds. The wave is built from real temporary water that is restored to
- * its original state as it fades, plus blue splash/dolphin particles and foam.
- * Fall damage is suppressed for the whole ride and for a short grace period
+ * <p>Raises a flowing wave in front of the caster and carries them forward for
+ * five seconds. The wave leads: its crest and its real temporary water sit
+ * {@code water-offset} blocks ahead of the surfer (2-4 reads best), so the ride
+ * is a bow wave the surfer travels in the wake of. The water is restored to its
+ * original state as it fades, plus blue splash/dolphin particles and foam. Fall
+ * damage is suppressed for the whole ride and for a short grace period
  * afterwards.</p>
  */
 public final class TidalSurfManager {
@@ -151,6 +153,9 @@ public final class TidalSurfManager {
         if (config.sounds) {
             player.getWorld().playSound(player.getLocation(), Sound.ENTITY_PLAYER_SPLASH, 0.8F, 0.7F);
         }
+        if (plugin.settings().debug) {
+            plugin.getLogger().info("[debug] Tidal Surf ended for " + player.getName());
+        }
     }
 
     private void apply(Player player, SurfSession session) {
@@ -185,12 +190,14 @@ public final class TidalSurfManager {
     }
 
     private void renderWave(World world, Location base, Vector direction, Vector side, PluginSettings.Surf config) {
+        double offset = config.waterOffset;
+        Location lead = base.clone().add(direction.clone().multiply(offset));
         double width = config.waveWidth + 1.0D;
         int points = 9;
         for (int i = 0; i < points; i++) {
             double ratio = (i / (double) (points - 1)) * 2.0D - 1.0D;
-            double forward = 1.15D - Math.abs(ratio) * 0.45D;
-            Location point = base.clone()
+            double forward = 0.45D - Math.abs(ratio) * 0.35D;
+            Location point = lead.clone()
                     .add(side.clone().multiply(ratio * width))
                     .add(direction.clone().multiply(forward))
                     .add(0.0D, 0.12D, 0.0D);
@@ -200,27 +207,32 @@ public final class TidalSurfManager {
             }
         }
 
-        Location stern = base.clone().subtract(direction.clone().multiply(1.2D));
-        world.spawnParticle(Particle.CLOUD, stern, 5, 0.45D, 0.12D, 0.45D, 0.01D);
-        world.spawnParticle(Particle.BUBBLE, base, 4, 0.5D, 0.25D, 0.5D, 0.02D);
+        world.spawnParticle(Particle.CLOUD, lead.clone().subtract(direction.clone().multiply(0.8D)), 5, 0.45D, 0.12D, 0.45D, 0.01D);
+        world.spawnParticle(Particle.BUBBLE, lead, 4, 0.5D, 0.25D, 0.5D, 0.02D);
+        // A thin wake under the surfer, so the ride still reads as riding the water.
+        world.spawnParticle(Particle.SPLASH, base, 3, 0.45D, 0.1D, 0.45D, 0.01D);
         if (random.nextInt(3) == 0) {
-            world.spawnParticle(Particle.FALLING_WATER, base.clone().add(0.0D, 0.4D, 0.0D), 3, 0.7D, 0.2D, 0.7D, 0.0D);
+            world.spawnParticle(Particle.FALLING_WATER, lead.clone().add(0.0D, 0.4D, 0.0D), 3, 0.7D, 0.2D, 0.7D, 0.0D);
         }
     }
 
     /**
-     * Replaces the air/plants under and around the surfer with temporary water
-     * so the wave is physical, not only a particle effect.
+     * Replaces the air/plants in the wave in front of the surfer with temporary
+     * water, so the wave is physical and not only a particle effect. With the
+     * default {@code water-offset: 3} the water spans 2-4 blocks ahead of the
+     * surfer: the surfer rides in the wave's wake.
      */
     private void placeWaveWater(SurfSession session, World world, Location base, Vector direction, Vector side, PluginSettings.Surf config) {
         int radius = config.waveWidth;
+        int lead = config.waterOffset;
         Set<Material> skip = plugin.settings().core.skipMaterials;
         BlockData water = Material.WATER.createBlockData();
 
         for (int forward = -1; forward <= 1; forward++) {
             for (int across = -radius; across <= radius; across++) {
-                int x = base.getBlockX() + (int) Math.round(direction.getX() * forward + side.getX() * across);
-                int z = base.getBlockZ() + (int) Math.round(direction.getZ() * forward + side.getZ() * across);
+                int depth = lead + forward;
+                int x = base.getBlockX() + (int) Math.round(direction.getX() * depth + side.getX() * across);
+                int z = base.getBlockZ() + (int) Math.round(direction.getZ() * depth + side.getZ() * across);
                 for (int layer = 0; layer <= 1; layer++) {
                     int y = base.getBlockY() - layer;
                     if (!world.isChunkLoaded(x >> 4, z >> 4)) {

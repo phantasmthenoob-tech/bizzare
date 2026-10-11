@@ -11,6 +11,7 @@ import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
 import org.bukkit.event.entity.EntityDamageEvent;
+import org.bukkit.event.entity.EntityRegainHealthEvent;
 import org.bukkit.event.entity.EntityTeleportEvent;
 import org.bukkit.event.entity.ProjectileLaunchEvent;
 import org.bukkit.event.player.PlayerCommandPreprocessEvent;
@@ -104,6 +105,42 @@ public final class ProtectionListener implements Listener {
         }
         Location to = event.getTo();
         if (to != null && !cube.isWithinBounds(to)) {
+            event.setCancelled(true);
+        }
+    }
+
+    /**
+     * While a victim is sealed the cube owns drowning: vanilla drowning ticks are
+     * suppressed so the victim takes exactly the configured total (3 hearts) even
+     * though their breath bar is genuinely empty.
+     */
+    @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
+    public void onDrownTick(EntityDamageEvent event) {
+        if (event.getCause() != EntityDamageEvent.DamageCause.DROWNING) {
+            return;
+        }
+        if (plugin.coreManager().isApplyingCoreDamage()) {
+            return;
+        }
+        if (plugin.coreManager().isTrapped(event.getEntity())) {
+            event.setCancelled(true);
+        }
+    }
+
+    /**
+     * Natural (hunger) regeneration is paused while an entity is sealed, so the
+     * three hearts of drowning damage actually stay lost instead of being healed
+     * back between hits. Other healing (potions, golden apples, plugins) still works.
+     */
+    @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
+    public void onNaturalRegen(EntityRegainHealthEvent event) {
+        if (!plugin.settings().core.suppressNaturalRegen) {
+            return;
+        }
+        if (event.getRegainReason() != EntityRegainHealthEvent.RegainReason.SATIATED) {
+            return;
+        }
+        if (plugin.coreManager().isTrapped(event.getEntity())) {
             event.setCancelled(true);
         }
     }

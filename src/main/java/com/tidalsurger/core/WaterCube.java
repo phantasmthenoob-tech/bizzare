@@ -25,6 +25,7 @@ import org.bukkit.util.Vector;
 
 import java.util.ArrayDeque;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.LinkedHashSet;
 import java.util.Locale;
 import java.util.Random;
@@ -45,11 +46,15 @@ import java.util.UUID;
  *       until its floor reaches {@code landing-offset} blocks below the target's
  *       feet.</li>
  *   <li><b>CONTAIN</b> - for {@code duration-ticks} (5 s) the victims are sealed
- *       inside: they swim freely but are pushed back at every boundary and every
- *       teleport out of the cube is refused. During those five seconds they take
- *       {@code total-damage} (3 hearts by default) of drowning damage, applied
- *       directly so neither the breath bar, water breathing, respiration nor
- *       armour can change it.</li>
+ *       inside: they swim freely but are pushed back at every boundary, every
+ *       teleport out of the cube is refused, and anyone entering the water is
+ *       trapped as well - the barrier cannot be walked, swum or teleported out of.
+ *       During those five seconds they genuinely drown ({@code drain-breath-bar}:
+ *       the air meter empties and bubbles burst) and take {@code total-damage}
+ *       (3 hearts by default) of {@code minecraft:drown} damage, applied directly
+ *       so water breathing, respiration and armour cannot change it. Natural
+ *       regeneration is paused while sealed, so the three hearts actually stay
+ *       lost for the whole window.</li>
  * </ol>
  *
  * <p>The world is never permanently changed: only passable, non-tile-entity
@@ -332,6 +337,7 @@ public final class WaterCube {
             destroy();
             return;
         }
+        sweepEnterers();
         containVictims();
         applyOwnerEffects();
         applyDrownDamage();
@@ -364,12 +370,21 @@ public final class WaterCube {
         if (primary != null) {
             trapEntity(primary);
         }
+        sweepEnterers();
+    }
+
+    /**
+     * Seals every living entity inside the water: whoever was caught when it
+     * landed and whoever swims, walks or teleports in later. Being in the water
+     * is the trap, so simply entering it is not an escape route.
+     */
+    private void sweepEnterers() {
         if (!config.trapAllInside) {
             return;
         }
         double half = size / 2.0D + 1.0D;
         for (Entity entity : world.getNearbyEntities(centerLocation(), half, height / 2.0D + 1.0D, half)) {
-            if (containsPoint(entity.getLocation())) {
+            if (!trapped.contains(entity.getUniqueId()) && containsPoint(entity.getLocation())) {
                 trapEntity(entity);
             }
         }
@@ -411,16 +426,27 @@ public final class WaterCube {
      * in, which is what makes the barrier feel solid for victims only.
      */
     private void containVictims() {
-        for (UUID id : trapped) {
+        Iterator<UUID> iterator = trapped.iterator();
+        while (iterator.hasNext()) {
+            UUID id = iterator.next();
             Entity entity = Bukkit.getEntity(id);
-            if (entity == null || !entity.isValid() || !world.equals(entity.getWorld())) {
+            if (entity == null) {
+                // Offline or unloaded: keep them trapped, relogging is not an escape.
+                continue;
+            }
+            if (!entity.isValid() || entity.isDead()) {
+                // Death is a release - never drag a respawned player back into the water.
+                iterator.remove();
+                continue;
+            }
+            if (!world.equals(entity.getWorld())) {
                 continue;
             }
             if (entity instanceof LivingEntity living) {
                 living.setFallDistance(0.0F);
-                if (config.ignoreBreathBar) {
-                    // "Drown without the breath bar": the air meter never becomes the mechanic.
-                    living.setRemainingAir(living.getMaximumAir());
+                if (config.drainBreathBar) {
+                    // Real drowning: the breath bar actually empties while they are sealed.
+                    living.setRemainingAir(0);
                 }
             }
             Location location = entity.getLocation();
@@ -454,15 +480,20 @@ public final class WaterCube {
         }
         int hits = Math.max(1, durationTicks / config.damageIntervalTicks);
         double perHit = config.totalDamage / hits;
-        for (UUID id : trapped) {
-            Entity entity = Bukkit.getEntity(id);
-            if (!(entity instanceof LivingEntity living) || !living.isValid() || living.isDead()) {
-                continue;
+        plugin.coreManager().beginCoreDamage();
+        try {
+            for (UUID id : trapped) {
+                Entity entity = Bukkit.getEntity(id);
+                if (!(entity instanceof LivingEntity living) || !living.isValid() || living.isDead()) {
+                    continue;
+                }
+                living.setNoDamageTicks(0);
+                living.damage(perHit, damageSource());
+                world.spawnParticle(Particle.BUBBLE, living.getLocation().add(0.0D, 1.0D, 0.0D), 12, 0.35D, 0.45D, 0.35D, 0.03D);
+                world.playSound(living.getLocation(), Sound.ENTITY_PLAYER_HURT_DROWN, 0.7F, 1.1F);
             }
-            living.setNoDamageTicks(0);
-            living.damage(perHit, damageSource());
-            world.spawnParticle(Particle.BUBBLE, living.getLocation().add(0.0D, 1.0D, 0.0D), 12, 0.35D, 0.45D, 0.35D, 0.03D);
-            world.playSound(living.getLocation(), Sound.ENTITY_PLAYER_HURT_DROWN, 0.7F, 1.1F);
+        } finally {
+            plugin.coreManager().endCoreDamage();
         }
     }
 
@@ -619,6 +650,11 @@ public final class WaterCube {
             }
             entity.setFallDistance(0.0F);
             entity.setVelocity(new Vector(0.0D, 0.0D, 0.0D));
+            if (entity instanceof LivingEntity living && !living.isOnGround()) {
+                // Released safely: the water sets them down instead of dropping them, so
+                // the ability's three hearts are the only damage a victim takes.
+                living.addPotionEffect(new PotionEffect(PotionEffectType.SLOW_FALLING, 100, 0, true, false, false));
+            }
             world.spawnParticle(Particle.SPLASH, entity.getLocation(), 24, 0.6D, 0.6D, 0.6D, 0.06D);
             if (entity instanceof Player player) {
                 messages.send(player, "core-released");
