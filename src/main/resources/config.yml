@@ -1,0 +1,203 @@
+# ==========================================================================
+#  Tidal Surger  -  configuration
+#  Paper 1.21.11
+#
+#  All text values use MiniMessage formatting: <aqua>, <bold>, <#4cc9f0>, ...
+# ==========================================================================
+
+general:
+  # Verbose console logging (input detection, ability triggers, cube builds).
+  debug: false
+
+# --------------------------------------------------------------------------
+#  Offhand key detection
+#
+#  The vanilla offhand keybind (F) is delivered to the server as a hand-swap
+#  action, which Paper exposes through PlayerSwapHandItemsEvent. That event is
+#  our reliable, client-mod-free way to detect "offhand key" presses, and the
+#  player's sneak state at that moment gives us "Shift + offhand key".
+# --------------------------------------------------------------------------
+input:
+  # Cancel the vanilla main-hand/offhand swap when the Tidal Surger is used as
+  # an ability key. Set to false if you would rather let the items swap.
+  cancel-vanilla-swap: true
+  # A sneak press within this window (milliseconds) before the offhand key still
+  # counts as "Shift + offhand key" for Tidal Core.
+  sneak-grace-millis: 350
+  # Only treat the offhand key as an ability trigger when the Tidal Surger is
+  # held in the main hand. Set false to also allow it while held in the offhand.
+  require-item-in-main-hand: true
+  # Optional fallback trigger for clients that remapped their swap key:
+  # right-click (sneak + right-click for Tidal Core) while holding the trident.
+  right-click-fallback: false
+  # Show the vanilla item-cooldown overlay on the trident while recharging.
+  show-item-cooldown: true
+
+# --------------------------------------------------------------------------
+#  Abilities
+# --------------------------------------------------------------------------
+abilities:
+  # How many water cubes a single player may have active at the same time.
+  max-concurrent-cubes-per-player: 1
+  # Hard safety cap of simultaneously active water cubes on the whole server.
+  max-concurrent-cubes-total: 24
+
+  tidal-surf:
+    enabled: true
+    permission: tidalsurger.ability.surf
+    cooldown-seconds: 30
+    # How long the ride lasts (20 ticks = 1 second).
+    duration-ticks: 110
+    # Forward carry speed in blocks per tick.
+    speed: 0.78
+    # Upward bump applied while touching a surface (the wave's crest).
+    lift: 0.22
+    max-rise: 0.45
+    max-fall: -0.28
+    # 1 => a 3-block-wide wave, 2 => 5 blocks wide.
+    wave-width: 1
+    # Spawn real (temporary, fully restored) water under the surfer.
+    place-water: true
+    # Ticks before a spawned wave block is put back exactly as it was.
+    water-fade-ticks: 14
+    # Fall damage immunity that lingers after the ride ends.
+    fall-immunity-ticks: 45
+    sounds: true
+
+  tidal-core:
+    enabled: true
+    permission: tidalsurger.ability.core
+    cooldown-seconds: 90
+    # Horizontal size of the water cube in blocks.
+    size: 10
+    # Vertical size of the cube in blocks (lower it for a flatter water slab).
+    height: 10
+    # The cube materialises this many blocks above its landing spot, i.e. above the
+    # target's head, and hangs there before it drops.
+    hover-height: 4
+    # How long the cube hovers before it drops (20 ticks = 1 second).
+    hover-ticks: 50
+    # How many blocks below the target's feet the cube's floor comes to rest at.
+    landing-offset: 2
+    # While hovering, keep the cube centred on a moving target so nobody can simply
+    # jog out from under it.
+    hover-tracking: true
+    # Re-centre once the target drifted this many blocks from the cube's centre.
+    reanchor-threshold: 1.5
+    # Never re-centre more often than every N ticks.
+    reanchor-interval-ticks: 4
+    # Ticks per block of falling speed (2 = the cube drops one block every 2 ticks).
+    fall-step-ticks: 2
+    # How long the victim is sealed inside the landed cube (20 ticks = 1 second).
+    duration-ticks: 100
+    # Drowning damage dealt across that whole window, in health points
+    # (2.0 health = 1 heart, so 6.0 = 3 hearts).
+    total-damage: 6.0
+    # One damage tick every N ticks: 100 ticks / 20 = 5 hits of 1.2 health = 3 hearts.
+    damage-interval-ticks: 20
+    # Keeps the victim's breath bar full and drives all damage from the plugin, so the
+    # air meter, water breathing, respiration and armour cannot change the damage.
+    ignore-breath-bar: true
+    # Credit the drowning kills to whoever cast the cube. The damage type stays
+    # minecraft:drown either way; with this off the Bukkit cause is DROWNING instead
+    # of ENTITY_ATTACK (useful if another plugin filters drowning damage).
+    damage-credit-owner: true
+    # Play the growl, splash and impact sounds.
+    sounds: true
+    max-target-distance: 30
+    # Trap every living entity that stands inside the cube when it forms.
+    trap-all-inside: true
+    trap-players: true
+    trap-mobs: true
+    # Ender pearls are refused while trapped.
+    block-ender-pearls: true
+    # /tp and /teleport are refused while trapped (all teleports leaving the cube are blocked regardless).
+    block-teleport-commands: true
+    # Give the cube owner water breathing + dolphin's grace while inside their own cube.
+    owner-water-breathing: true
+    # Render the cube visuals every N ticks.
+    render-interval: 4
+    # Distance between two particles along the cube edges.
+    edge-step: 1.0
+    # Dark-blue glowing edges.
+    edge-particles: [ "SOUL_FIRE_FLAME", "SCULK_SOUL" ]
+    # Aqua accents on the corners and the inner swirl.
+    accent-particles: [ "DOLPHIN", "ELECTRIC_SPARK" ]
+    # Ambient water particles inside the cube.
+    ambient-particles: [ "BUBBLE", "FALLING_WATER" ]
+    # Blocks that are never replaced by the water cube (on top of the rule that
+    # only passable blocks - air, water, plants - are ever replaced, and every
+    # replaced block is restored byte-for-byte when the cube collapses).
+    skip-materials: [ "WATER", "LAVA", "FIRE", "SOUL_FIRE", "NETHER_PORTAL", "END_PORTAL", "END_GATEWAY", "BUDDING_AMETHYST", "SPAWNER", "BARRIER", "LIGHT", "STRUCTURE_VOID", "BEDROCK" ]
+
+# --------------------------------------------------------------------------
+#  The Tidal Surger trident itself
+# --------------------------------------------------------------------------
+item:
+  name: "<gradient:#0b2f4f:#7fe9ff><bold>Tidal Surger</bold></gradient>"
+  lore:
+    - "<dark_aqua>» <aqua>Legendary Trident of the Deep"
+    - "<gray>Forged where the trench meets the light."
+    - ""
+    - "<dark_aqua>F <gray>» <aqua>Tidal Surf <dark_gray>(30s)"
+    - "<dark_aqua>Shift + F <gray>» <aqua>Tidal Core <dark_gray>(90s)"
+    - "<gray>Drops a <aqua>10x10 <gray>cube of water on your target."
+    - ""
+    - "<italic><dark_gray>The ocean answers only this blade."
+  custom-model-data: 1011
+  glowing: true
+  unbreakable: true
+  # <enchantment_key>:<level>
+  enchantments:
+    - "loyalty:3"
+    - "impaling:5"
+    - "unbreaking:3"
+    - "mending:1"
+  recipe:
+    enabled: true
+    # Shaped recipe, keys: T = trident, P = prismarine shard, S = nautilus shell
+    shape:
+      - "PSP"
+      - "STS"
+      - "PSP"
+    ingredients:
+      T: TRIDENT
+      P: PRISMARINE_SHARD
+      S: NAUTILUS_SHELL
+
+# --------------------------------------------------------------------------
+#  Messages (MiniMessage)
+# --------------------------------------------------------------------------
+messages:
+  prefix: "<gradient:#0b2f4f:#7fe9ff><bold>Tidal Surger</bold></gradient> <dark_gray>»</dark_gray> "
+  use-prefix: true
+
+  no-permission: "<red>You do not have permission to summon this power."
+  ability-disabled: "<red>%ability% is disabled on this server."
+  cooldown: "<gray>%ability% <dark_gray>| <aqua>%seconds%s <gray>remaining."
+  already-surfing: "<gray>You are already riding the tide."
+  surf-start: "<aqua>The tide rises beneath you!"
+  core-no-target: "<gray>No target found within <aqua>%range% <gray>blocks."
+  core-cast: "<aqua>A tidal core gathers above your target!"
+  core-limit: "<gray>You already control as many tidal cores as you can sustain."
+  core-hover: "<aqua><bold>A Tidal Core is forming above you..."
+  core-drop: "<aqua><bold>The Tidal Core is dropping on you!"
+  core-trap: "<aqua><bold>You are sealed inside the Tidal Core!"
+  core-trap-sub: "<gray>The crushing deep drains you for <aqua>%seconds%s<gray>."
+  core-released: "<aqua>The Tidal Core releases you."
+  cannot-escape: "<red>The tidal barrier refuses to let you pass."
+  blocked-command: "<red>Teleportation is sealed inside the Tidal Core."
+  reloaded: "<green>Configuration reloaded."
+  give-self: "<aqua>You feel the weight of the deep: <white>%item%<aqua>."
+  give-other: "<aqua>Gave <white>%item%<aqua> to <white>%player%<aqua>."
+  player-not-found: "<red>Player <white>%player% <red>is not online."
+  player-only: "<red>Only a player can use this command."
+  unknown-command: "<red>Unknown subcommand. Try <white>/ts give<red>, <white>/ts info<red> or <white>/ts reload<red>."
+  cubes-none: "<gray>No active water cubes."
+  cubes-list: "<gray>Active water cubes: <aqua>%count% <dark_gray>(%details%)"
+  info-header: "<dark_aqua><bold>Tidal Surger"
+  info-surf: "<gray>Tidal Surf <dark_gray>| <aqua>%status%"
+  info-core: "<gray>Tidal Core <dark_gray>| <aqua>%status%"
+  info-ready: "ready"
+  info-cooldown: "%seconds%s cooldown"
+  info-usage: "<gray>Hold the <aqua>Tidal Surger <gray>and press <aqua>F<gray> to surf, <aqua>Shift + F<gray> for the core."

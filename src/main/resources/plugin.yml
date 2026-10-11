@@ -1,0 +1,55 @@
+name: TidalSurger
+version: '1.0.0'
+main: com.tidalsurger.TidalSurgerPlugin
+api-version: '1.21'
+authors: [ TidalSurger ]
+description: Legendary ocean trident with the Tidal Surf and Tidal Core abilities.
+website: https://papermc.io
+
+commands:
+  tidalsurger:
+    description: Utility and admin commands for the Tidal Surger plugin.
+    usage: |
+      /tidalsurger give [player] - receive the Tidal Surger
+      /tidalsurger info - show ability status and cooldowns
+      /tidalsurger cubes - list the active water cubes
+      /tidalsurger reload - reload config.yml
+    aliases: [ ts, tidalsurge ]
+
+permissions:
+  tidalsurger.use:
+    description: Base permission required to activate any Tidal Surger ability.
+    default: true
+  tidalsurger.ability.surf:
+    description: Allows activating Tidal Surf (offhand key F).
+    default: true
+  tidalsurger.ability.core:
+    description: Allows activating Tidal Core (Shift + offhand key F).
+    default: true
+  tidalsurger.bypass.cooldown:
+    description: Ignores Tidal Surger cooldowns.
+    default: op
+  tidalsurger.bypass.trap:
+    description: Cannot be trapped inside a Tidal Core water cube.
+    default: op
+  tidalsurger.command.give:
+    description: Allows using /tidalsurger give.
+    default: op
+  tidalsurger.command.reload:
+    description: Allows using /tidalsurger reload.
+    default: op
+  tidalsurger.command.debug:
+    description: Allows using /tidalsurger cubes.
+    default: op
+  tidalsurger.*:
+    description: Grants every Tidal Surger permission.
+    default: op
+    children:
+      tidalsurger.use: true
+      tidalsurger.ability.surf: true
+      tidalsurger.ability.core: true
+      tidalsurger.bypass.cooldown: true
+      tidalsurger.bypass.trap: true
+      tidalsurger.command.give: true
+      tidalsurger.command.reload: true
+      tidalsurger.command.debug: true
