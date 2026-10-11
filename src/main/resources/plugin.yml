@@ -28,11 +28,11 @@ permissions:
     description: Allows activating Tidal Core (Shift + offhand key F).
     default: true
   tidalsurger.bypass.cooldown:
-    description: Ignores Tidal Surger cooldowns.
-    default: op
+    description: Ignores Tidal Surger cooldowns. Granted explicitly; cooldowns apply to everyone by default, operators included.
+    default: false
   tidalsurger.bypass.trap:
-    description: Cannot be trapped inside a Tidal Core water cube.
-    default: op
+    description: Cannot be trapped inside a Tidal Core water cube. Granted explicitly; everyone can be trapped by default.
+    default: false
   tidalsurger.command.give:
     description: Allows using /tidalsurger give.
     default: op
@@ -46,14 +46,12 @@ permissions:
     description: Allows using /tidalsurger cubes.
     default: op
   tidalsurger.*:
-    description: Grants every Tidal Surger permission.
+    description: Grants every Tidal Surger permission (the two bypass nodes are deliberately not included).
     default: op
     children:
       tidalsurger.use: true
       tidalsurger.ability.surf: true
       tidalsurger.ability.core: true
-      tidalsurger.bypass.cooldown: true
-      tidalsurger.bypass.trap: true
       tidalsurger.command.give: true
       tidalsurger.command.cooldown: true
       tidalsurger.command.reload: true

@@ -4,9 +4,9 @@ A complete, production-ready **Paper 1.21.11** plugin adding a legendary ocean t
 abilities: **Tidal Surf** and **Tidal Core**.
 
 ```
-F            ->  Tidal Surf   (10s cooldown)  ride a water wave forward
-Shift + F    ->  Tidal Core   (20s cooldown)  slam a 10x10 water cube onto the target, shake the ground,
-                                              launch the surrounding blocks and drown the victim for 3 hearts
+F            ->  Tidal Surf   (10s cooldown)  ride a steerable water wave (WASD, Space climbs, Shift dives)
+Shift + F    ->  Tidal Core   (20s cooldown)  drop a 10x10 water cube that descends until it hits the ground
+                                              or a target, shake the ground, and drown the victim for 3 hearts
 ```
 
 While an ability is recharging a **blue BossBar at the top of the screen** drains with the remaining
@@ -76,7 +76,11 @@ sneak + right-click while holding the trident.
   (`duration-ticks`, default 100).
 * The wave leads: its crest and its real temporary water ride 2–4 blocks ahead of the surfer
   (`water-offset: 3`), so the ride reads as a bow wave with the surfer in its wake.
-* Steerable: the carry direction follows the player's current yaw every tick.
+* **Steerable**: the carry direction follows the player's current yaw every tick, and the movement keys
+  steer on top of that — W/S carry the surfer along their view, A/D carve 45° sideways, and with no
+  movement key held the wave keeps carrying them where they look.
+* **Space climbs and Shift dives** while riding (`ascend-speed: 0.45` / `descend-speed: -0.45` blocks
+  per tick by default, both configurable), so the ride can hop obstacles or dive under them.
 * Blue water particles (`SPLASH`, `DOLPHIN`, `BUBBLE`, `FALLING_WATER`) form an animated crest,
   foam and a wake; a real temporary water trail is placed ahead of the surfer and restored as it fades.
 * **No fall damage**: fall distance is reset every tick during the ride, and fall damage stays
@@ -90,8 +94,12 @@ A 10x10 water cube that hovers over the target's head, slams into the ground on 
    materialises the cube in the air `hover-height` blocks (4 by default) above the target's head.
    While it hangs there it keeps itself centred on a moving target (`hover-tracking`), so nobody
    can just jog out from under it. Drips fall from its underside and the victim is warned.
-2. **Drop** — the whole cube falls, one block every `fall-step-ticks` (2), throwing spray off its
-   leading edge, until its floor reaches `landing-offset` (2) blocks below the target's feet.
+2. **Descent** — the whole cube then descends **all the way down**, throwing spray off its leading
+   edge, and only stops on a **landing surface**: the ground below it, another player, a mob that is
+   aggroed to the caster, or the entity the caster aimed at (`fall-step-ticks: 2`). Its floor comes to
+   rest `landing-offset` (2) blocks below that surface, so the core never stops in mid-air where the
+   crosshair happened to point. While it falls it keeps following the marked target horizontally, and
+   long drops accelerate (up to 8 blocks per fall step) while still landing exactly on the surface.
 3. **Slam** — the instant the cube hits the ground the landing shockwave fires (`shockwave.*`): the
    ring of ground blocks around the impact is **launched into the air**, every entity in the blast
    radius (6 blocks by default) is thrown up and away and takes **one hit of slam damage (4 HP = 2
@@ -185,13 +193,17 @@ The plugin never permanently changes or destroys the world:
 | `tidalsurger.use` | `true` | Base gate for activating any ability |
 | `tidalsurger.ability.surf` | `true` | Allow Tidal Surf |
 | `tidalsurger.ability.core` | `true` | Allow Tidal Core |
-| `tidalsurger.bypass.cooldown` | `op` | Ignores both cooldowns (and the item cooldown overlay) |
-| `tidalsurger.bypass.trap` | `op` | Cannot be trapped inside a water cube |
+| `tidalsurger.bypass.cooldown` | `false` | Ignores both cooldowns (and the item cooldown overlay). Not implied by `tidalsurger.*` — grant it explicitly |
+| `tidalsurger.bypass.trap` | `false` | Cannot be trapped inside a water cube. Not implied by `tidalsurger.*` — grant it explicitly |
 | `tidalsurger.command.give` | `op` | `/ts give` |
 | `tidalsurger.command.cooldown` | `op` | `/ts cooldown` |
 | `tidalsurger.command.reload` | `op` | `/ts reload` |
 | `tidalsurger.command.debug` | `op` | `/ts cubes` |
-| `tidalsurger.*` | `op` | Everything above |
+| `tidalsurger.*` | `op` | Every permission above **except the two bypass nodes** |
+
+> The two `bypass` nodes default to `false` on purpose: **cooldowns and the Tidal Core trap apply to
+> everyone, operators included**. Grant `tidalsurger.bypass.cooldown` / `tidalsurger.bypass.trap`
+> explicitly (e.g. to a dev account) if you want to opt out.
 
 ---
 
@@ -203,12 +215,13 @@ The plugin never permanently changes or destroys the world:
 * **input** — `cancel-vanilla-swap`, `sneak-grace-millis`, `require-item-in-main-hand`,
   `right-click-fallback`, `show-item-cooldown`.
 * **abilities.tidal-surf** — `enabled`, `permission`, `cooldown-seconds`, `duration-ticks`
-  (100 = 5 s), `speed`, `lift`, `max-rise`, `max-fall`, `wave-width`, `water-offset` (blocks in
-  front of the surfer the wave and its water ride), `place-water`, `water-fade-ticks`,
-  `fall-immunity-ticks`, `sounds`.
+  (100 = 5 s), `speed`, `lift`, `max-rise`, `max-fall`, `ascend-speed` (Space), `descend-speed`
+  (Shift), `wave-width`, `water-offset` (blocks in front of the surfer the wave and its water ride),
+  `place-water`, `water-fade-ticks`, `fall-immunity-ticks`, `sounds`.
 * **abilities.tidal-core** — `enabled`, `permission`, `cooldown-seconds`, `size`, `height`,
-  `hover-height`, `hover-ticks`, `landing-offset`, `hover-tracking`, `reanchor-threshold`,
-  `reanchor-interval-ticks`, `fall-step-ticks`, `duration-ticks`, `total-damage`,
+  `hover-height`, `hover-ticks`, `landing-offset` (how far below the landing surface the floor comes
+  to rest), `hover-tracking`, `reanchor-threshold`, `reanchor-interval-ticks`, `fall-step-ticks`
+  (the descent speed; long drops accelerate), `duration-ticks`, `total-damage`,
   `damage-interval-ticks`, `drain-breath-bar`, `suppress-natural-regen`, `damage-credit-owner`, `sounds`,
   `max-target-distance`, `trap-all-inside`, `trap-players`, `trap-mobs`, `block-ender-pearls`,
   `block-teleport-commands`, `owner-water-breathing`, `render-interval`, `edge-step`,
@@ -358,3 +371,36 @@ src/main/java/com/tidalsurger/
   monitored blocks matched its original `BlockData` string exactly — zero mismatches, zero
   leftover water. The landing slam that fires during that test also left zero un-cancelled
   placements, and the same test passes with the slam enabled.
+
+### Operator cooldowns, core descent and ride controls (latest full harness run)
+
+* The packaged `plugin.yml` was checked before the run: both `tidalsurger.bypass.cooldown` and
+  `tidalsurger.bypass.trap` carry `default: false` and are **no longer children of `tidalsurger.*`**,
+  so an operator gets **cooldowns, the bar and the trap exactly like everyone else**. Verified with a
+  level-4 bot: `Tidal Surf | 10.0s` blue bar on cast, a second `F` refused with
+  `Tidal Surf | 8.2s remaining.`, in-game `/ts info` reporting `Tidal Surf | 7.7s cooldown`, the
+  cooldown still holding after the ride ended (`Tidal Surf | 5.0s remaining.`), `/ts cooldown`
+  deleting the bar in the same tick, and the ability usable again immediately after the clear. This
+  also explains the earlier "cooldowns aren't showing / I can spam" report: operators were silently
+  granted the bypass nodes by default.
+* A **Tidal Core aimed straight up into the sky now descends all the way to the ground**:
+  `Water cube landed: world[-6,106,-12->3,115,-3] phase=contain trapped=0 (ground)` — the floor rests
+  on the arena surface instead of stopping where the crosshair pointed.
+* The descent **stops on a target instead of dropping past it**: with a player standing on a pillar
+  beside the landing column the cube landed 2 blocks below their feet
+  (`... phase=contain trapped=0 on VictimBot (PLAYER)`), not on the ground far below them.
+* An **operator victim** (level-4 bot) is sealed (`trapped=1`), messaged
+  (`You are sealed inside the Tidal Core!`), and takes the full damage again: **5 drown hits of
+  1.2 HP = exactly 6.00 HP** plus the single 4.0 HP mace-smash slam, ending 5 hearts down
+  (20.0 → 10.0 HP). Previously an operator victim carried `bypass.trap` (default `op`) and was never
+  trapped at all — which is what made the damage look inconsistent.
+* An **aggroed zombie** is caught the same way (`trapped=1`) and damaged from 20.0 → 10.06 health
+  across the slam plus the drown window.
+* **Ride controls** verified from the plugin's own debug log while actually riding (bot input packets
+  from a real client on the server): `forward=1.0 ... heading=-0.00,1.00` (W rides along the view),
+  no movement key still carries the surfer where they look (`forward=0.0 ... heading=-0.00,1.00`),
+  **`jump=true ... vertical=0.45`** (Space climbs), **`sneak=true ... vertical=-0.45`** (Shift sinks)
+  and **`strafe=1.0 ... heading=-0.71,0.71`** (forward+right turns 45° right). The same ride still
+  delivers its carry to the client as `entity_velocity` pushes.
+* The whole run finished with **no server exceptions** and the only blocked messages were the
+  intended ones.

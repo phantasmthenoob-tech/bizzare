@@ -3,11 +3,13 @@ package com.tidalsurger.input;
 import com.tidalsurger.TidalSurgerPlugin;
 import com.tidalsurger.ability.AbilityType;
 import com.tidalsurger.config.PluginSettings;
+import org.bukkit.Input;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
 import org.bukkit.event.block.Action;
+import org.bukkit.event.player.PlayerInputEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.event.player.PlayerSwapHandItemsEvent;
@@ -38,6 +40,7 @@ public final class InputListener implements Listener {
 
     private final TidalSurgerPlugin plugin;
     private final Map<UUID, Long> lastSneak = new HashMap<>();
+    private final Map<UUID, Input> inputs = new HashMap<>();
 
     public InputListener(TidalSurgerPlugin plugin) {
         this.plugin = plugin;
@@ -106,9 +109,25 @@ public final class InputListener implements Listener {
         }
     }
 
+    /**
+     * The client's live movement-input snapshot (WASD, Space, Shift, sprint).
+     * Modern clients send it with every input change, and Tidal Surf reads it
+     * while riding to steer and to rise or sink.
+     */
+    @EventHandler
+    public void onPlayerInput(PlayerInputEvent event) {
+        inputs.put(event.getPlayer().getUniqueId(), event.getInput());
+    }
+
+    /** The most recent input snapshot of a player, or null when none arrived yet. */
+    public Input input(Player player) {
+        return inputs.get(player.getUniqueId());
+    }
+
     @EventHandler
     public void onQuit(PlayerQuitEvent event) {
         lastSneak.remove(event.getPlayer().getUniqueId());
+        inputs.remove(event.getPlayer().getUniqueId());
     }
 
     private boolean isShiftHeld(Player player, PluginSettings settings) {

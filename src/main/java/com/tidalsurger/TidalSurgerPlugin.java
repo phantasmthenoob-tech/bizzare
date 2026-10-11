@@ -10,7 +10,9 @@ import com.tidalsurger.input.InputListener;
 import com.tidalsurger.item.TidalSurgerItem;
 import com.tidalsurger.listener.ProtectionListener;
 import com.tidalsurger.surf.TidalSurfManager;
+import org.bukkit.Input;
 import org.bukkit.NamespacedKey;
+import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.plugin.java.JavaPlugin;
 
@@ -34,6 +36,7 @@ public final class TidalSurgerPlugin extends JavaPlugin {
     private CooldownBars cooldownBars;
     private TidalCoreManager coreManager;
     private TidalSurfManager surfManager;
+    private InputListener inputListener;
     private AbilityService abilities;
 
     @Override
@@ -57,7 +60,8 @@ public final class TidalSurgerPlugin extends JavaPlugin {
         this.coreManager.start();
         this.cooldownBars.start();
 
-        getServer().getPluginManager().registerEvents(new InputListener(this), this);
+        this.inputListener = new InputListener(this);
+        getServer().getPluginManager().registerEvents(inputListener, this);
         getServer().getPluginManager().registerEvents(new ProtectionListener(this), this);
 
         TidalSurgerCommand executor = new TidalSurgerCommand(this);
@@ -149,6 +153,11 @@ public final class TidalSurgerPlugin extends JavaPlugin {
 
     public AbilityService abilities() {
         return abilities;
+    }
+
+    /** The client's latest movement-input snapshot (WASD / Space / Shift), or null. */
+    public Input playerInput(Player player) {
+        return inputListener == null ? null : inputListener.input(player);
     }
 
     public boolean isTidalSurger(ItemStack stack) {

@@ -54,6 +54,10 @@ abilities:
     lift: 0.22
     max-rise: 0.45
     max-fall: -0.28
+    # Ride controls: hold Space to climb and Shift to sink. W/A/S/D steer the
+    # wave, and with no movement key held the wave carries you wherever you look.
+    ascend-speed: 0.45
+    descend-speed: -0.45
     # 1 => a 3-block-wide wave, 2 => 5 blocks wide.
     wave-width: 1
     # The wave leads: its crest and its temporary water ride this many blocks in
@@ -81,7 +85,10 @@ abilities:
     hover-height: 4
     # How long the cube hovers before it drops (20 ticks = 1 second).
     hover-ticks: 50
-    # How many blocks below the target's feet the cube's floor comes to rest at.
+    # The cube then descends all the way down, and only stops on a landing surface:
+    # the ground below it, another player, a mob that is aggroed to the caster, or
+    # the entity the caster aimed at. It no longer stops where the crosshair was.
+    # How many blocks below that landing surface the cube's floor comes to rest.
     landing-offset: 2
     # While hovering, keep the cube centred on a moving target so nobody can simply
     # jog out from under it.

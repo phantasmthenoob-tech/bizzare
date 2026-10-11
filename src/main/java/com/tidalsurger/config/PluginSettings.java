@@ -76,6 +76,8 @@ public final class PluginSettings {
         public final double lift;
         public final double maxRise;
         public final double maxFall;
+        public final double ascendSpeed;
+        public final double descendSpeed;
         public final int waveWidth;
         public final int waterOffset;
         public final boolean placeWater;
@@ -93,6 +95,8 @@ public final class PluginSettings {
             this.lift = clamp(config.getDouble(base + "lift", 0.22), 0.0, 1.0);
             this.maxRise = clamp(config.getDouble(base + "max-rise", 0.45), 0.0, 2.0);
             this.maxFall = clamp(config.getDouble(base + "max-fall", -0.28), -2.0, 0.0);
+            this.ascendSpeed = clamp(config.getDouble(base + "ascend-speed", 0.45), 0.0, 2.0);
+            this.descendSpeed = clamp(config.getDouble(base + "descend-speed", -0.45), -2.0, 0.0);
             this.waveWidth = Math.max(0, Math.min(3, config.getInt(base + "wave-width", 1)));
             this.waterOffset = Math.max(0, Math.min(6, config.getInt(base + "water-offset", 3)));
             this.placeWater = config.getBoolean(base + "place-water", true);

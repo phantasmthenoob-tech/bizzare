@@ -6,6 +6,7 @@ import com.tidalsurger.config.PluginSettings;
 import com.tidalsurger.util.BlockSnapshot;
 import com.tidalsurger.util.BlockUtils;
 import org.bukkit.Bukkit;
+import org.bukkit.Input;
 import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.Particle;
@@ -23,6 +24,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Random;
 import java.util.Set;
@@ -163,13 +165,36 @@ public final class TidalSurfManager {
         World world = player.getWorld();
         Location location = player.getLocation();
 
-        Vector direction = horizontal(location.getDirection(), session.direction);
+        // Mouse-look is the default heading, and WASD steers on top of it: W/S ride
+        // along the view, A/D carve sideways. With no movement key held the wave
+        // keeps carrying the surfer the way they are looking, like before.
+        Vector look = horizontal(location.getDirection(), session.direction);
+        Input input = plugin.playerInput(player);
+        Vector direction = look;
+        double forward = 0.0D;
+        double strafe = 0.0D;
+        if (input != null) {
+            forward = (input.isForward() ? 1.0D : 0.0D) - (input.isBackward() ? 1.0D : 0.0D);
+            strafe = (input.isRight() ? 1.0D : 0.0D) - (input.isLeft() ? 1.0D : 0.0D);
+            if (forward != 0.0D || strafe != 0.0D) {
+                Vector side = new Vector(-look.getZ(), 0.0D, look.getX());
+                direction = horizontal(look.clone().multiply(forward).add(side.multiply(strafe)), look);
+            }
+        }
         session.direction = direction;
         Vector side = new Vector(-direction.getZ(), 0.0D, direction.getX());
 
+        // Space climbs, Shift dives. Otherwise the ride keeps its old feel: a bump
+        // while skimming a surface, and the current vertical speed in the air.
         Vector velocity = direction.clone().multiply(config.speed);
+        boolean jumping = input != null && input.isJump();
+        boolean sinking = input != null && input.isSneak();
         double vertical;
-        if (player.isOnGround()) {
+        if (jumping && !sinking) {
+            vertical = config.ascendSpeed;
+        } else if (sinking && !jumping) {
+            vertical = config.descendSpeed;
+        } else if (player.isOnGround()) {
             // Skimming the surface: keep the crest raised just above the ground.
             vertical = config.lift;
         } else {
@@ -178,6 +203,17 @@ public final class TidalSurfManager {
         velocity.setY(vertical);
         player.setVelocity(velocity);
         player.setFallDistance(0.0F);
+
+        if (plugin.settings().debug) {
+            String signature = forward + "|" + strafe + "|" + jumping + "|" + sinking;
+            if (!signature.equals(session.controlSignature)) {
+                session.controlSignature = signature;
+                plugin.getLogger().info("[debug] " + player.getName() + " surf controls: forward=" + forward
+                        + " strafe=" + strafe + " jump=" + jumping + " sneak=" + sinking
+                        + " vertical=" + String.format(Locale.ROOT, "%.2f", vertical)
+                        + " heading=" + String.format(Locale.ROOT, "%.2f,%.2f", direction.getX(), direction.getZ()));
+            }
+        }
 
         renderWave(world, location, direction, side, config);
         if (config.placeWater) {
@@ -286,6 +322,8 @@ public final class TidalSurfManager {
         private final ArrayDeque<BlockSnapshot> placed = new ArrayDeque<>();
         private int ticksLeft;
         private Vector direction;
+        /** Last logged control combination, so the debug log only reports changes. */
+        private String controlSignature = "";
 
         SurfSession(int durationTicks, Vector direction) {
             this.ticksLeft = durationTicks;

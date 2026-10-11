@@ -16,8 +16,10 @@ import org.bukkit.block.Block;
 import org.bukkit.block.data.BlockData;
 import org.bukkit.damage.DamageSource;
 import org.bukkit.damage.DamageType;
+import org.bukkit.entity.ArmorStand;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.LivingEntity;
+import org.bukkit.entity.Mob;
 import org.bukkit.entity.Player;
 import org.bukkit.potion.PotionEffect;
 import org.bukkit.potion.PotionEffectType;
@@ -42,9 +44,11 @@ import java.util.UUID;
  *       {@code hover-ticks} (2.5 s by default). While it hangs it keeps itself
  *       centred on a moving target, so a victim cannot simply jog out from under
  *       it.</li>
- *   <li><b>FALL</b> - the whole cube drops, one block per {@code fall-step-ticks},
- *       until its floor reaches {@code landing-offset} blocks below the target's
- *       feet.</li>
+ *   <li><b>FALL</b> - the whole cube descends all the way down until it reaches
+ *       its landing surface: the ground below it, another player, a mob that is
+ *       aggroed to the caster, or the entity the caster aimed at. Its floor
+ *       comes to rest {@code landing-offset} blocks below that surface, so the
+ *       core never stops in mid-air where the crosshair happened to point.</li>
  *   <li><b>SLAM</b> - the moment the cube hits the ground the landing shockwave
  *       fires: the ring of ground blocks around the impact is launched into the
  *       air, entities in the blast are thrown up and take one hit of slam damage,
@@ -90,8 +94,10 @@ public final class WaterCube {
     private int minX;
     private int minY;
     private int minZ;
-    /** Floor height the cube drops down to. */
-    private int fallTargetMinY;
+    /** Floor height the cube drops to when nothing stops it first (scanned as the fall starts). */
+    private int fallFloor;
+    /** The entity whose surface stopped the descent, named for the debug log. */
+    private String landingEntityName;
 
     private final Set<UUID> trapped = new LinkedHashSet<>();
     private final ArrayDeque<BlockSnapshot> placed = new ArrayDeque<>();
@@ -123,8 +129,7 @@ public final class WaterCube {
         int half = size / 2;
         this.minX = anchor.getBlockX() - half;
         this.minZ = anchor.getBlockZ() - half;
-        this.fallTargetMinY = clampFloor(anchor.getBlockY() - config.landingOffset);
-        this.minY = clampTop(fallTargetMinY + config.hoverHeight);
+        this.minY = clampTop(clampFloor(anchor.getBlockY() - config.landingOffset) + config.hoverHeight);
     }
 
     // ---------------------------------------------------------------- geometry
@@ -274,6 +279,7 @@ public final class WaterCube {
         if (phaseTicks >= config.hoverTicks) {
             phase = Phase.FALL;
             phaseTicks = 0;
+            this.fallFloor = groundFloor();
             if (config.sounds) {
                 world.playSound(centerLocation(), Sound.ITEM_BUCKET_EMPTY, 1.0F, 0.55F);
                 world.playSound(centerLocation(), Sound.ENTITY_PLAYER_SPLASH, 1.0F, 0.6F);
@@ -305,7 +311,6 @@ public final class WaterCube {
         if (hungryDrift(location, centerX, centerZ) && hoverY == minY) {
             return;
         }
-        this.fallTargetMinY = floor;
         moveTo(location.getBlockX() - size / 2, hoverY, location.getBlockZ() - size / 2);
     }
 
@@ -315,24 +320,122 @@ public final class WaterCube {
         return Math.sqrt(dx * dx + dz * dz) < config.reanchorThreshold;
     }
 
-    /** Stage 2: drop the cube onto the target. */
+    /** Stage 2: descend until the cube reaches its landing surface. */
     private void tickFall() {
         phaseTicks++;
         if (phaseTicks % config.fallStepTicks != 0) {
             return;
         }
-        if (minY <= fallTargetMinY) {
+        trackDuringFall();
+        int floor = landingFloor();
+        if (minY <= floor) {
             land();
             return;
         }
-        moveTo(minX, Math.max(fallTargetMinY, minY - 1), minZ);
+        int step = Math.max(1, Math.min(8, (minY - floor + 3) / 4));
+        moveTo(minX, Math.max(floor, minY - step), minZ);
         renderFallTrail();
         if (config.sounds && phaseTicks % (config.fallStepTicks * 2) == 0) {
             world.playSound(centerLocation(), Sound.ENTITY_PLAYER_SPLASH, 0.5F, 1.4F);
         }
-        if (minY <= fallTargetMinY) {
+        if (minY <= floor) {
             land();
         }
+    }
+
+    /**
+     * The highest solid ground under the cube's footprint, scanned once as the
+     * fall starts. The cube comes to rest {@code landing-offset} blocks below it,
+     * so it genuinely reaches the ground instead of stopping at the aim point.
+     */
+    private int groundFloor() {
+        int surface = world.getMinHeight();
+        for (int x = minX; x <= maxX(); x++) {
+            for (int z = minZ; z <= maxZ(); z++) {
+                if (!world.isChunkLoaded(x >> 4, z >> 4)) {
+                    continue;
+                }
+                for (int y = maxY() + 1; y >= world.getMinHeight(); y--) {
+                    Block block = world.getBlockAt(x, y, z);
+                    if (!block.getType().isAir() && block.getType().isSolid() && !block.isLiquid()) {
+                        surface = Math.max(surface, y + 1);
+                        break;
+                    }
+                }
+            }
+        }
+        return clampFloor(surface - config.landingOffset);
+    }
+
+    /**
+     * The floor the cube is dropping towards right now: the ground under it, or the
+     * feet of the highest worthwhile target in the drop column - another player, the
+     * entity the caster aimed at, or a mob aggroed to the caster. Targets above the
+     * cube are ignored, so nothing drags the cube back up.
+     */
+    private int landingFloor() {
+        int floor = fallFloor;
+        landingEntityName = null;
+        double bottom = Math.min(fallFloor, minY) - 1.0D;
+        double top = maxY() + 1.0D;
+        Location center = new Location(world, (minX + maxX() + 1) / 2.0D, (bottom + top) / 2.0D,
+                (minZ + maxZ() + 1) / 2.0D);
+        double radius = size / 2.0D + 1.0D;
+        for (Entity entity : world.getNearbyEntities(center, radius, (top - bottom) / 2.0D, radius)) {
+            if (!isLandingTarget(entity)) {
+                continue;
+            }
+            int target = clampFloor(entity.getLocation().getBlockY() - config.landingOffset);
+            if (target <= minY && target > floor) {
+                floor = target;
+                landingEntityName = entity.getName() + " (" + entity.getType() + ")";
+            }
+        }
+        return floor;
+    }
+
+    /** Anyone worth landing on: another player, the aimed entity, or a mob aggroed to the caster. */
+    private boolean isLandingTarget(Entity entity) {
+        if (!entity.isValid() || entity.getUniqueId().equals(ownerId)) {
+            return false;
+        }
+        if (entity instanceof ArmorStand) {
+            return false;
+        }
+        if (entity instanceof Player player) {
+            return config.trapPlayers
+                    && player.getGameMode() != GameMode.SPECTATOR
+                    && !player.hasPermission("tidalsurger.bypass.trap");
+        }
+        if (!config.trapMobs) {
+            return false;
+        }
+        if (entity.getUniqueId().equals(primaryTargetId)) {
+            return true;
+        }
+        return entity instanceof Mob mob && mob.getTarget() != null
+                && mob.getTarget().getUniqueId().equals(ownerId);
+    }
+
+    /** Keeps the descending cube over the marked target, without changing its height. */
+    private void trackDuringFall() {
+        if (!config.hoverTracking || primaryTargetId == null) {
+            return;
+        }
+        if (phaseTicks % config.reanchorIntervalTicks != 0) {
+            return;
+        }
+        Entity target = Bukkit.getEntity(primaryTargetId);
+        if (target == null || !target.isValid() || !world.equals(target.getWorld())) {
+            return;
+        }
+        Location location = target.getLocation();
+        double centerX = minX + size / 2.0D;
+        double centerZ = minZ + size / 2.0D;
+        if (hungryDrift(location, centerX, centerZ)) {
+            return;
+        }
+        moveTo(location.getBlockX() - size / 2, minY, location.getBlockZ() - size / 2);
     }
 
     /** Stage 3: seal the victims in and drown them for the configured duration. */
@@ -349,7 +452,6 @@ public final class WaterCube {
     }
 
     private void land() {
-        moveTo(minX, fallTargetMinY, minZ);
         phase = Phase.CONTAIN;
         phaseTicks = 0;
         containTicks = 0;
@@ -369,7 +471,8 @@ public final class WaterCube {
         plugin.coreManager().shockwave().impact(world, impact, Bukkit.getPlayer(ownerId));
 
         if (plugin.settings().debug) {
-            plugin.getLogger().info("[debug] Water cube landed: " + describe());
+            plugin.getLogger().info("[debug] Water cube landed: " + describe()
+                    + (landingEntityName == null ? " (ground)" : " on " + landingEntityName));
         }
     }
 
