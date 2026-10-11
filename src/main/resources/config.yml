@@ -45,7 +45,7 @@ abilities:
   tidal-surf:
     enabled: true
     permission: tidalsurger.ability.surf
-    cooldown-seconds: 30
+    cooldown-seconds: 10
     # How long the ride lasts (20 ticks = 1 second). 100 ticks = 5 seconds.
     duration-ticks: 100
     # Forward carry speed in blocks per tick.
@@ -71,7 +71,7 @@ abilities:
   tidal-core:
     enabled: true
     permission: tidalsurger.ability.core
-    cooldown-seconds: 90
+    cooldown-seconds: 20
     # Horizontal size of the water cube in blocks.
     size: 10
     # Vertical size of the cube in blocks (lower it for a flatter water slab).
@@ -142,6 +142,50 @@ abilities:
     # replaced block is restored byte-for-byte when the cube collapses).
     skip-materials: [ "WATER", "LAVA", "FIRE", "SOUL_FIRE", "NETHER_PORTAL", "END_PORTAL", "END_GATEWAY", "BUDDING_AMETHYST", "SPAWNER", "BARRIER", "LIGHT", "STRUCTURE_VOID", "BEDROCK" ]
 
+    # ----------------------------------------------------------------------
+    #  Landing shockwave (the ground slam)
+    #
+    #  The moment the cube slams into the ground it kicks off a Paladin-style
+    #  shockwave: the ground shakes, the ring of ground blocks around the impact
+    #  is launched into the air, and every entity caught in the blast is thrown
+    #  up and away and takes one hit of slam damage.
+    #
+    #  The block boost only happens where the slam actually hits solid ground -
+    #  over open water there is nothing to launch, so the impact stays a pure
+    #  splash. The launched blocks are temporary visuals: they are cancelled from
+    #  ever placing themselves and are removed after block-lifetime-ticks, so the
+    #  world is never permanently changed.
+    #
+    #  The slam damage is separate from the drowning: the sealed victim still
+    #  drowns for exactly total-damage (3 hearts by default) of minecraft:drown.
+    # ----------------------------------------------------------------------
+    shockwave:
+      enabled: true
+      # Reach of the ground slam, measured from the impact point in blocks.
+      radius: 6.0
+      # How many ground blocks around the edge of the impact are launched up.
+      block-count: 32
+      # Upward speed given to each launched block (0.35 = a low hop, 0.9 = a tall leap).
+      block-launch: 0.55
+      # Ticks before a launched block is removed (it never places itself back down).
+      block-lifetime-ticks: 30
+      # Slam damage dealt once to every living entity in the radius
+      # (2.0 health = 1 heart, so 4.0 = 2 hearts). Set 0 to disable.
+      damage: 4.0
+      # Upward launch given to entities caught in the blast (scaled down near the edge).
+      launch: 0.75
+      # Horizontal push away from the impact (scaled down near the edge).
+      knockback: 0.45
+      # Random micro-shoves applied while the ground shakes; 0 = visual rumble only.
+      shake: 0.12
+      # How long the ground shakes for, in ticks (20 ticks = 1 second).
+      shake-ticks: 12
+      # Fall damage is suppressed for this long after being launched, so the slam
+      # itself is the only damage the blast deals.
+      fall-immunity-ticks: 60
+      # Sound and particle effects (the heavy mace slam, the debris ring, the rumble).
+      effects: true
+
 # --------------------------------------------------------------------------
 #  The Tidal Surger trident itself
 # --------------------------------------------------------------------------
@@ -151,8 +195,8 @@ item:
     - "<dark_aqua>» <aqua>Legendary Trident of the Deep"
     - "<gray>Forged where the trench meets the light."
     - ""
-    - "<dark_aqua>F <gray>» <aqua>Tidal Surf <dark_gray>(30s)"
-    - "<dark_aqua>Shift + F <gray>» <aqua>Tidal Core <dark_gray>(90s)"
+    - "<dark_aqua>F <gray>» <aqua>Tidal Surf <dark_gray>(10s)"
+    - "<dark_aqua>Shift + F <gray>» <aqua>Tidal Core <dark_gray>(20s)"
     - "<gray>Drops a <aqua>10x10 <gray>cube of water on your target."
     - ""
     - "<italic><dark_gray>The ocean answers only this blade."
@@ -176,6 +220,30 @@ item:
       T: TRIDENT
       P: PRISMARINE_SHARD
       S: NAUTILUS_SHELL
+
+# --------------------------------------------------------------------------
+#  Ability cooldown bar
+#
+#  While an ability is recharging a blue BossBar is shown at the top of the
+#  screen. It drains with the remaining time and shows the ability name and the
+#  seconds left, then flips to the "ready" title for a moment and disappears.
+#  Each ability gets its own bar, so both can be tracked at once.
+# --------------------------------------------------------------------------
+cooldown-bar:
+  enabled: true
+  # BossBar colours: PINK, BLUE, RED, GREEN, YELLOW, PURPLE, WHITE.
+  color: BLUE
+  # SOLID, SEGMENTED_6, SEGMENTED_10, SEGMENTED_12, SEGMENTED_20.
+  style: SOLID
+  # Title while recharging. %ability% = ability name, %seconds% = time left.
+  # The bar's fill is exactly the remaining fraction of the cooldown.
+  title: "<aqua>%ability% <dark_gray>| <white>%seconds%s"
+  # Title flashed for a moment once the ability is usable again.
+  ready-title: "<aqua>%ability% <green>ready"
+  # How long the ready title lingers before the bar disappears.
+  ready-linger-ticks: 20
+  # Refresh rate of the bars, in ticks.
+  update-interval-ticks: 1
 
 # --------------------------------------------------------------------------
 #  Messages (MiniMessage)

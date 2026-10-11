@@ -45,6 +45,11 @@ import java.util.UUID;
  *   <li><b>FALL</b> - the whole cube drops, one block per {@code fall-step-ticks},
  *       until its floor reaches {@code landing-offset} blocks below the target's
  *       feet.</li>
+ *   <li><b>SLAM</b> - the moment the cube hits the ground the landing shockwave
+ *       fires: the ring of ground blocks around the impact is launched into the
+ *       air, entities in the blast are thrown up and take one hit of slam damage,
+ *       and the ground shakes. Over open water there is no ground to launch and
+ *       the impact stays a splash.</li>
  *   <li><b>CONTAIN</b> - for {@code duration-ticks} (5 s) the victims are sealed
  *       inside: they swim freely but are pushed back at every boundary, every
  *       teleport out of the cube is refused, and anyone entering the water is
@@ -358,6 +363,11 @@ public final class WaterCube {
         }
         world.spawnParticle(Particle.SPLASH, center, 140, size / 2.0D, 0.4D, size / 2.0D, 0.12D);
         world.spawnParticle(Particle.CLOUD, center, 60, size / 2.0D, 0.2D, size / 2.0D, 0.05D);
+
+        // The landing slam: launched edge blocks, blast damage and the shaking ground.
+        Location impact = new Location(world, (minX + maxX() + 1) / 2.0D, minY, (minZ + maxZ() + 1) / 2.0D);
+        plugin.coreManager().shockwave().impact(world, impact, Bukkit.getPlayer(ownerId));
+
         if (plugin.settings().debug) {
             plugin.getLogger().info("[debug] Water cube landed: " + describe());
         }
@@ -650,10 +660,15 @@ public final class WaterCube {
             }
             entity.setFallDistance(0.0F);
             entity.setVelocity(new Vector(0.0D, 0.0D, 0.0D));
-            if (entity instanceof LivingEntity living && !living.isOnGround()) {
-                // Released safely: the water sets them down instead of dropping them, so
-                // the ability's three hearts are the only damage a victim takes.
-                living.addPotionEffect(new PotionEffect(PotionEffectType.SLOW_FALLING, 100, 0, true, false, false));
+            if (entity instanceof LivingEntity living) {
+                // The sealed window drained their breath bar, so give it back: a released
+                // victim must not keep drowning after the ability is over.
+                living.setRemainingAir(living.getMaximumAir());
+                if (!living.isOnGround()) {
+                    // Released safely: the water sets them down instead of dropping them, so
+                    // the ability's drown damage is the only damage a victim takes.
+                    living.addPotionEffect(new PotionEffect(PotionEffectType.SLOW_FALLING, 100, 0, true, false, false));
+                }
             }
             world.spawnParticle(Particle.SPLASH, entity.getLocation(), 24, 0.6D, 0.6D, 0.6D, 0.06D);
             if (entity instanceof Player player) {

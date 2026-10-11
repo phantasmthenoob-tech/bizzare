@@ -21,6 +21,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
@@ -38,6 +39,7 @@ public final class TidalCoreManager {
 
     private final TidalSurgerPlugin plugin;
     private final Messages messages;
+    private final CoreShockwave shockwave;
     private final List<WaterCube> cubes = new ArrayList<>();
     private final Map<UUID, Integer> cubesByOwner = new HashMap<>();
     private final Set<UUID> internalTeleports = ConcurrentHashMap.newKeySet();
@@ -50,10 +52,12 @@ public final class TidalCoreManager {
     public TidalCoreManager(TidalSurgerPlugin plugin) {
         this.plugin = plugin;
         this.messages = new Messages(plugin);
+        this.shockwave = new CoreShockwave(plugin);
     }
 
     public void start() {
         this.task = Bukkit.getScheduler().runTaskTimer(plugin, this::tick, 1L, 1L);
+        this.shockwave.start();
     }
 
     public void shutdown() {
@@ -61,6 +65,7 @@ public final class TidalCoreManager {
             task.cancel();
             task = null;
         }
+        this.shockwave.shutdown();
         for (WaterCube cube : new ArrayList<>(cubes)) {
             cube.destroy();
         }
@@ -121,7 +126,8 @@ public final class TidalCoreManager {
             victim.playSound(victim.getLocation(), Sound.ENTITY_ELDER_GUARDIAN_CURSE, 0.8F, 1.2F);
         }
         if (settings.debug) {
-            plugin.getLogger().info("[debug] Tidal Core cast by " + caster.getName() + " -> " + cube.describe());
+            plugin.getLogger().info("[debug] Tidal Core cast by " + caster.getName() + " -> " + cube.describe()
+                    + " (target: " + target.describe() + ")");
         }
         return true;
     }
@@ -148,16 +154,21 @@ public final class TidalCoreManager {
                 entity -> entity instanceof LivingEntity
                         && !(entity instanceof ArmorStand)
                         && entity.isValid()
-                        && !entity.getUniqueId().equals(caster.getUniqueId()));
+                        && !entity.getUniqueId().equals(caster.getUniqueId())
+                        // Never target an entity the caster is already standing inside,
+                        // which would otherwise swallow the whole ray trace.
+                        && !entity.getBoundingBox().contains(eye.toVector()));
 
         if (entityHit != null && entityHit.getHitEntity() != null) {
-            return new Target(entityHit.getHitEntity().getLocation(), entityHit.getHitEntity());
+            return new Target("entity " + entityHit.getHitEntity().getName(),
+                    entityHit.getHitEntity().getLocation(), entityHit.getHitEntity());
         }
         if (blockHit != null && blockHit.getHitBlock() != null) {
             // The surface standing on the hit block, so the cube drops onto it.
-            return new Target(blockHit.getHitBlock().getLocation().add(0.5D, 1.0D, 0.5D), null);
+            return new Target("block " + blockHit.getHitBlock().getType(),
+                    blockHit.getHitBlock().getLocation().add(0.5D, 1.0D, 0.5D), null);
         }
-        return new Target(eye.clone().add(direction.multiply(maxDistance)), null);
+        return new Target("point", eye.clone().add(direction.multiply(maxDistance)), null);
     }
 
     /** Called by a cube before it moves a victim, so the protection listener allows it. */
@@ -172,6 +183,11 @@ public final class TidalCoreManager {
 
     public boolean isInternalTeleport(Player player) {
         return internalTeleports.contains(player.getUniqueId());
+    }
+
+    /** The landing slam shared by every cube. */
+    public CoreShockwave shockwave() {
+        return shockwave;
     }
 
     /** Marks the start of the plugin's own drowning damage (see the protection listener). */
@@ -209,6 +225,11 @@ public final class TidalCoreManager {
     }
 
     /** A resolved crosshair target. */
-    private record Target(Location location, Entity entity) {
+    private record Target(String kind, Location location, Entity entity) {
+
+        private String describe() {
+            return kind + " at " + String.format(Locale.ROOT, "%.1f,%.1f,%.1f",
+                    location.getX(), location.getY(), location.getZ());
+        }
     }
 }

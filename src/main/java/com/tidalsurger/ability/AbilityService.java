@@ -60,6 +60,9 @@ public final class AbilityService {
             if (settings.input.showItemCooldown) {
                 player.setCooldown(Material.TRIDENT, ability.cooldownSeconds() * 20);
             }
+            if (ability.cooldownSeconds() > 0) {
+                plugin.cooldownBars().onCooldownStarted(player, type);
+            }
         }
         return success;
     }

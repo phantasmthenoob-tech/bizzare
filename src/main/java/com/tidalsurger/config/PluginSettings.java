@@ -3,6 +3,8 @@ package com.tidalsurger.config;
 import com.tidalsurger.ability.AbilityType;
 import org.bukkit.Material;
 import org.bukkit.Particle;
+import org.bukkit.boss.BarColor;
+import org.bukkit.boss.BarStyle;
 import org.bukkit.configuration.file.FileConfiguration;
 
 import java.util.ArrayList;
@@ -21,6 +23,7 @@ public final class PluginSettings {
     public final Input input;
     public final Surf surf;
     public final Core core;
+    public final CooldownBar cooldownBar;
     public final int maxConcurrentCubesPerPlayer;
     public final int maxConcurrentCubesTotal;
 
@@ -29,6 +32,7 @@ public final class PluginSettings {
         this.input = new Input(config);
         this.surf = new Surf(config);
         this.core = new Core(config);
+        this.cooldownBar = new CooldownBar(config);
         this.maxConcurrentCubesPerPlayer = Math.max(1, config.getInt("abilities.max-concurrent-cubes-per-player", 1));
         this.maxConcurrentCubesTotal = Math.max(1, config.getInt("abilities.max-concurrent-cubes-total", 24));
     }
@@ -83,7 +87,7 @@ public final class PluginSettings {
             String base = "abilities.tidal-surf.";
             this.enabled = config.getBoolean(base + "enabled", true);
             this.permission = config.getString(base + "permission", AbilityType.TIDAL_SURF.defaultPermission());
-            this.cooldownSeconds = Math.max(0, config.getInt(base + "cooldown-seconds", 30));
+            this.cooldownSeconds = Math.max(0, config.getInt(base + "cooldown-seconds", 10));
             this.durationTicks = Math.max(20, config.getInt(base + "duration-ticks", 100));
             this.speed = clamp(config.getDouble(base + "speed", 0.78), 0.05, 3.0);
             this.lift = clamp(config.getDouble(base + "lift", 0.22), 0.0, 1.0);
@@ -132,12 +136,13 @@ public final class PluginSettings {
         public final List<Particle> accentParticles;
         public final List<Particle> ambientParticles;
         public final Set<Material> skipMaterials;
+        public final Shockwave shockwave;
 
         Core(FileConfiguration config) {
             String base = "abilities.tidal-core.";
             this.enabled = config.getBoolean(base + "enabled", true);
             this.permission = config.getString(base + "permission", AbilityType.TIDAL_CORE.defaultPermission());
-            this.cooldownSeconds = Math.max(0, config.getInt(base + "cooldown-seconds", 90));
+            this.cooldownSeconds = Math.max(0, config.getInt(base + "cooldown-seconds", 20));
             this.size = Math.max(3, Math.min(24, config.getInt(base + "size", 10)));
             this.height = Math.max(1, Math.min(24, config.getInt(base + "height", 10)));
             this.hoverHeight = Math.max(0, Math.min(32, config.getInt(base + "hover-height", 4)));
@@ -169,11 +174,93 @@ public final class PluginSettings {
             this.skipMaterials = materials(config, base + "skip-materials",
                     List.of("WATER", "LAVA", "FIRE", "SOUL_FIRE", "NETHER_PORTAL", "END_PORTAL", "END_GATEWAY",
                             "BUDDING_AMETHYST", "SPAWNER", "BARRIER", "LIGHT", "STRUCTURE_VOID", "BEDROCK"));
+            this.shockwave = new Shockwave(config, base + "shockwave.");
+        }
+
+        /**
+         * The landing slam: ground shake, launched edge blocks, impact damage and
+         * knock-up. All values are documented in config.yml.
+         */
+        public static final class Shockwave {
+            public final boolean enabled;
+            public final double radius;
+            public final int blockCount;
+            public final double blockLaunch;
+            public final int blockLifetimeTicks;
+            public final double damage;
+            public final double launch;
+            public final double knockback;
+            public final double shake;
+            public final int shakeTicks;
+            public final int fallImmunityTicks;
+            public final boolean effects;
+
+            Shockwave(FileConfiguration config, String base) {
+                this.enabled = config.getBoolean(base + "enabled", true);
+                this.radius = clamp(config.getDouble(base + "radius", 6.0D), 1.0D, 24.0D);
+                this.blockCount = Math.max(0, Math.min(96, config.getInt(base + "block-count", 32)));
+                this.blockLaunch = clamp(config.getDouble(base + "block-launch", 0.55D), 0.1D, 2.0D);
+                this.blockLifetimeTicks = Math.max(5, config.getInt(base + "block-lifetime-ticks", 30));
+                this.damage = Math.max(0.0D, config.getDouble(base + "damage", 4.0D));
+                this.launch = clamp(config.getDouble(base + "launch", 0.75D), 0.0D, 3.0D);
+                this.knockback = clamp(config.getDouble(base + "knockback", 0.45D), 0.0D, 3.0D);
+                this.shake = clamp(config.getDouble(base + "shake", 0.12D), 0.0D, 1.0D);
+                this.shakeTicks = Math.max(0, config.getInt(base + "shake-ticks", 12));
+                this.fallImmunityTicks = Math.max(0, config.getInt(base + "fall-immunity-ticks", 60));
+                this.effects = config.getBoolean(base + "effects", true);
+            }
+        }
+    }
+
+    /**
+     * The blue recharge BossBar shown at the top of the screen while an ability
+     * is on cooldown.
+     */
+    public static final class CooldownBar {
+        public final boolean enabled;
+        public final BarColor color;
+        public final BarStyle style;
+        public final String title;
+        public final String readyTitle;
+        public final int readyLingerTicks;
+        public final int updateIntervalTicks;
+
+        CooldownBar(FileConfiguration config) {
+            String base = "cooldown-bar.";
+            this.enabled = config.getBoolean(base + "enabled", true);
+            this.color = barColor(config.getString(base + "color", "BLUE"));
+            this.style = barStyle(config.getString(base + "style", "SOLID"));
+            this.title = config.getString(base + "title", "<aqua>%ability% <dark_gray>| <white>%seconds%s");
+            this.readyTitle = config.getString(base + "ready-title", "<aqua>%ability% <green>ready");
+            this.readyLingerTicks = Math.max(0, config.getInt(base + "ready-linger-ticks", 20));
+            this.updateIntervalTicks = Math.max(1, config.getInt(base + "update-interval-ticks", 1));
         }
     }
 
     private static double clamp(double value, double min, double max) {
         return Math.max(min, Math.min(max, value));
+    }
+
+    private static BarColor barColor(String name) {
+        if (name != null) {
+            try {
+                return BarColor.valueOf(name.trim().toUpperCase(Locale.ROOT));
+            } catch (IllegalArgumentException unknown) {
+                // fall through to the default below
+            }
+        }
+        return BarColor.BLUE;
+    }
+
+    private static BarStyle barStyle(String name) {
+        if (name != null) {
+            try {
+                return BarStyle.valueOf(name.trim().toUpperCase(Locale.ROOT));
+            } catch (IllegalArgumentException unknown) {
+                // fall through to the default below
+            }
+        }
+        return BarStyle.SOLID;
     }
 
     private static List<Particle> particles(FileConfiguration config, String path, List<String> defaults, Particle fallback) {

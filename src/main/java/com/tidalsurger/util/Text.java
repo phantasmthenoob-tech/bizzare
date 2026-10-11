@@ -13,6 +13,7 @@ public final class Text {
 
     private static final MiniMessage MINI = MiniMessage.miniMessage();
     private static final LegacyComponentSerializer LEGACY = LegacyComponentSerializer.legacyAmpersand();
+    private static final LegacyComponentSerializer LEGACY_SECTION = LegacyComponentSerializer.legacySection();
 
     private Text() {
     }
@@ -36,6 +37,14 @@ public final class Text {
             component = LEGACY.deserialize(raw);
         }
         return italicsOff ? component.decoration(TextDecoration.ITALIC, false) : component;
+    }
+
+    /**
+     * MiniMessage (or ampersand fallback) rendered into a legacy section-code
+     * string, for APIs that still take plain strings - the BossBar title.
+     */
+    public static String legacy(String raw) {
+        return LEGACY_SECTION.serialize(mm(raw));
     }
 
     public static String plain(String raw) {

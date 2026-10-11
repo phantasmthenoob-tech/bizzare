@@ -4,9 +4,13 @@ A complete, production-ready **Paper 1.21.11** plugin adding a legendary ocean t
 abilities: **Tidal Surf** and **Tidal Core**.
 
 ```
-F            ->  Tidal Surf   (30s cooldown)  ride a water wave forward
-Shift + F    ->  Tidal Core   (90s cooldown)  drop a 10x10 water cube on the target and drown them for 3 hearts
+F            ->  Tidal Surf   (10s cooldown)  ride a water wave forward
+Shift + F    ->  Tidal Core   (20s cooldown)  slam a 10x10 water cube onto the target, shake the ground,
+                                              launch the surrounding blocks and drown the victim for 3 hearts
 ```
+
+While an ability is recharging a **blue BossBar at the top of the screen** drains with the remaining
+cooldown and shows the seconds left.
 
 The finished plugin jar is built to **`target/TidalSurger.jar`** (a ready-to-use copy also lives at
 `dist/TidalSurger.jar`).
@@ -67,7 +71,7 @@ sneak + right-click while holding the trident.
 
 ## 4. Abilities
 
-### Tidal Surf — offhand key, 30 s cooldown
+### Tidal Surf — offhand key, 10 s cooldown
 * Raises a flowing wave in front of the caster and carries them forward for exactly 5 s
   (`duration-ticks`, default 100).
 * The wave leads: its crest and its real temporary water ride 2–4 blocks ahead of the surfer
@@ -78,8 +82,8 @@ sneak + right-click while holding the trident.
 * **No fall damage**: fall distance is reset every tick during the ride, and fall damage stays
   cancelled for `fall-immunity-ticks` (45 ticks ≈ 2.25 s) after the ride ends.
 
-### Tidal Core — Shift + offhand key, 90 s cooldown
-A 10x10 water cube that hovers over the target's head, drops on them, and drowns them.
+### Tidal Core — Shift + offhand key, 20 s cooldown
+A 10x10 water cube that hovers over the target's head, slams into the ground on them and drowns them.
 
 1. **Hover (2.5 s, `hover-ticks: 50`)** — ray-traces the crosshair (30 blocks by default: a living
    entity is preferred, otherwise the block face hit, otherwise a point at maximum range) and
@@ -88,7 +92,16 @@ A 10x10 water cube that hovers over the target's head, drops on them, and drowns
    can just jog out from under it. Drips fall from its underside and the victim is warned.
 2. **Drop** — the whole cube falls, one block every `fall-step-ticks` (2), throwing spray off its
    leading edge, until its floor reaches `landing-offset` (2) blocks below the target's feet.
-3. **Contain + drown (5 s, `duration-ticks: 100`)** — the victims are sealed in and genuinely drown:
+3. **Slam** — the instant the cube hits the ground the landing shockwave fires (`shockwave.*`): the
+   ring of ground blocks around the impact is **launched into the air**, every entity in the blast
+   radius (6 blocks by default) is thrown up and away and takes **one hit of slam damage (4 HP = 2
+   hearts, `shockwave.damage`)** in the mace-smash damage type, and the ground **shakes** for 12
+   ticks (expanding debris ring, rumble plus micro-shoves) — a Paladin-style ground slam. The block
+   boost only happens where the slam actually hits solid ground: over open water there is nothing to
+   launch and the impact stays a pure splash. The launched blocks are temporary debris that can
+   never place itself (they are removed after `block-lifetime-ticks`) and launched entities get
+   `fall-immunity-ticks` of fall-damage grace, so the slam is the only damage it deals.
+4. **Contain + drown (5 s, `duration-ticks: 100`)** — the victims are sealed in and genuinely drown:
    with `drain-breath-bar: true` their **breath bar empties to zero**, bubbles burst off them and the
    drowning sound plays, and they take **exactly 3 hearts (6 HP, `total-damage: 6.0`)** of
    `minecraft:drown` damage spread over the five seconds in five 1.2 HP ticks. Vanilla's own
@@ -115,6 +128,19 @@ A 10x10 water cube that hovers over the target's head, drops on them, and drowns
   each) and **every changed block is restored byte-for-byte**.
 * `height` is separate from `size`, so `size: 10` with `height: 4` gives a wide flat water slab
   instead of a cube if you prefer.
+
+### Cooldown bar
+
+* Use an ability and a **blue BossBar appears at the top of the screen** (`cooldown-bar.*`).
+* Its fill is exactly the remaining fraction of the cooldown, so it **drains as the time runs out**,
+  and its title shows the ability name and the remaining seconds (`<aqua>%ability% <dark_gray>|
+  <white>%seconds%s` by default).
+* When the ability becomes usable the bar flips to the `<green>ready` title for a moment
+  (`ready-linger-ticks`) and then disappears.
+* Each ability gets its own bar, so having both on cooldown shows both stacked at the top; colour
+  (`color: BLUE`), style, titles and refresh rate are all configurable.
+* Cooldowns are per player, per ability and persisted, so a relogging player gets their recharge
+  bar back at the correct progress.
 
 ---
 
@@ -180,7 +206,11 @@ The plugin never permanently changes or destroys the world:
   `damage-interval-ticks`, `drain-breath-bar`, `suppress-natural-regen`, `damage-credit-owner`, `sounds`,
   `max-target-distance`, `trap-all-inside`, `trap-players`, `trap-mobs`, `block-ender-pearls`,
   `block-teleport-commands`, `owner-water-breathing`, `render-interval`, `edge-step`,
-  `edge-particles`, `accent-particles`, `ambient-particles`, `skip-materials`.
+  `edge-particles`, `accent-particles`, `ambient-particles`, `skip-materials`, plus the landing slam
+  block `shockwave` — `enabled`, `radius`, `block-count`, `block-launch`, `block-lifetime-ticks`,
+  `damage`, `launch`, `knockback`, `shake`, `shake-ticks`, `fall-immunity-ticks`, `effects`.
+* **cooldown-bar** — `enabled`, `color` (BLUE), `style`, `title`, `ready-title`,
+  `ready-linger-ticks`, `update-interval-ticks`.
 * An existing `config.yml` is **merged with new keys on startup**, so updating the plugin never
   leaves you on "Missing message" fallbacks — new settings simply appear in your file.
 * **item** — display name, lore (MiniMessage), custom model data, glow, unbreakable flag,
@@ -220,9 +250,11 @@ src/main/java/com/tidalsurger/
   ability/AbilityType.java                the two abilities
   ability/AbilityService.java             permission + cooldown pipeline
   ability/CooldownStore.java              persisted per-player cooldowns
+  ability/CooldownBars.java               the blue draining cooldown BossBar
   surf/TidalSurfManager.java              Tidal Surf (wave ride, trail, fall immunity)
   core/TidalCoreManager.java              Tidal Core (targeting, cube lifecycle)
   core/WaterCube.java                     the hovering/dropping water cube + drown damage
+  core/CoreShockwave.java                 landing slam: launched blocks, blast, shaking ground
   listener/ProtectionListener.java        escape prevention + fall-damage immunity
   command/TidalSurgerCommand.java         /tidalsurger
   util/                                   MiniMessage text, block snapshots, block safety
@@ -237,39 +269,71 @@ src/main/java/com/tidalsurger/
     trident stays in the main hand.
   * `Shift + F` → Tidal Core starts and a `[x,y,z -> x,y,z]` cube is created around the target.
   * A second F press while riding reports `You are already riding the tide`, and the ability's own
-    30 s / 90 s cooldowns are enforced independently.
+    cooldowns are enforced per ability and per player.
   * The ride lasts **exactly 5.0 s** (100 ticks, measured 5007 ms end to end), the carry motion is
     delivered at **99 `entity_velocity` packets over the 100 ticks** with the configured 0.78 speed,
     and the wave's real water sits **2–4 blocks in front of the surfer** while riding and is fully
     restored (0 blocks left) after the ride fades.
-  * The victim is sealed (`trapped=1`), keeps getting pushed back at the boundary while sprinting
-    and jumping into it, and a `COMMAND` teleport (`/tp`) out of the cube is refused with
-    `The tidal barrier refuses to let you pass.`
-  * The cube owner moves freely through the boundary while the victim is trapped.
-  * When the 5 seconds elapse the cube collapses, the victim is released alive and healthy, and
-    `/ts cubes` is empty again.
   * The custom crafting recipe is registered (`/recipe give <player> tidalsurger:tidal_surger`
     unlocks it) and `/ts reload` can be run repeatedly without a duplicate-recipe error.
-* Tidal Core, with a real second player as the victim (server-side damage events logged by a test
-  plugin, positions read from a real client):
-  * `Shift + F` casts it and the victim is warned; the cube reports `phase=hover` first, then drops
-    and reports `phase=contain trapped=1`.
-  * Over the five contained seconds it deals **5 hits of 1.2 HP = exactly 6.00 HP = 3 hearts** of
-    `minecraft:drown` damage. The victim's breath bar is **genuinely empty (`air=0/300`) on every
-    hit**, and their health falls exactly 20 → 18.8 → 17.6 → 16.4 → 15.2 (pre-hit values), proving
-    natural regeneration never heals any of it back while sealed; every natural-regen attempt is
-    logged as cancelled. The victim is still 3 hearts down (≈14.2 HP) right after the window.
-  * **Nothing can get out**: sprinting + jumping into the boundary produced **0.00 blocks of
-    excursion** for the targeted victim, and a second player teleported into the water after it
-    landed was sealed too (`trapped=2`) and could not swim back out.
-  * A `/tp` out is refused with `The tidal barrier refuses to let you pass.`
-  * **Death is a release**: with the victim killed inside, the cube immediately drops them from its
-    trapped list (still `phase=contain`) and the respawn is not dragged back into the water.
-  * When the five seconds elapse the cube reports `No active water cubes`; the victim is released
-    safely with a short slow-falling grace and **takes no fall or other extra damage** — the 3
-    hearts of drowning are the only damage the ability deals.
-* World-safety test on a real world, driving the **full hover -> drop -> contain** lifecycle: the
+  * The victim is sealed (`trapped=1`), keeps getting pushed back at the boundary while sprinting
+    and jumping into it, a `COMMAND` teleport (`/tp`) out of the cube is refused with
+    `The tidal barrier refuses to let you pass.`, and the cube **owner moves freely through the
+    boundary while the victim is trapped**.
+
+### Cooldown bar
+
+* Using Tidal Surf creates a **blue BossBar at the top of the screen**. While the 10 s cooldown ran
+  its fill drained **0.73 → 0.49 → 0.34**, its title counted down (`Tidal Surf | 10.0s` at the
+  start) and a second `F` was refused with `Tidal Surf | 7.3s remaining.`
+* When the cooldown ended the bar flipped to `Tidal Surf ready` and disappeared 1.0 s later.
+* Relogging in the middle of a cooldown rebuilt the bar from the persisted cooldown at the correct
+  progress (measured fill 0.20 with `Tidal Surf | 1.9s` left).
+* Tidal Core behaves the same way: `Tidal Core | 20.0s` on cast, drained 1.00 → 0.58 during the
+  cooldown, and a second `Shift + F` was refused with `Tidal Core | 19.4s remaining.`
+
+### Landing slam (Paladin-style ground shockwave)
+
+* With the cube landing on stone the plugin logs `Tidal Core shockwave at 5.5,199.0,0.5
+  (launched blocks: 32)`: **exactly 32 ground blocks** — the whole edge ring — are launched into the
+  air as falling-block entities, each carrying the ground's own material (`mat=STONE`) and
+  `vy=0.550`, all still valid one tick later.
+* Every launched block is temporary: `diag debris` reported `n=0` afterwards and no placement ever
+  went through (the only `EntityChangeBlockEvent` attempts were `cancelled=true`), with the
+  world-safety test still byte-for-byte clean.
+* The victim is hit once for **4.0 HP (2 hearts) of `minecraft:mace_smash`**, launched upwards
+  (velocity events at `y=0.400`+) and then kept shoved around by the shaking ground for 12 ticks
+  (repeated small velocity events for every entity in the radius).
+* **Only on solid ground**: the same ability cast into a deep-water pool logged `launched blocks:
+  0` — the scan finds no ground under the impact, so nothing boosts up and the impact stays a
+  splash.
+
+### Containment and drowning (re-verified after the slam)
+
+* With a real second player as the victim, the cube reports `phase=contain trapped=1` and the
+  victim is warned they are sealed.
+* **Nothing can get out**: sprinting + jumping into the boundary produced **0.00 blocks of
+  excursion** for the targeted victim, a second player teleported into the water after it landed
+  was sealed too (`trapped=2`, also **0.00** excursion) and a `/tp` out was refused with `The
+  tidal barrier refuses to let you pass.`
+* Over the five contained seconds it deals **5 hits of 1.2 HP = exactly 6.00 HP = 3 hearts** of
+  `minecraft:drown` damage. The victim's breath bar is **genuinely empty (`air=0/300`) on every
+  hit**, and their pre-hit health falls exactly 16 → 14.8 → 13.6 → 12.4 → 11.2 — the 2 hearts of
+  slam damage land first, then the three hearts of drowning — proving natural regeneration never
+  heals any of it back while sealed; every natural-regen attempt is logged as cancelled. The
+  victim is **5 hearts down (10.0 HP)** right after the window.
+* The slam is the only other damage: exactly one `minecraft:mace_smash` hit of 4.0 HP and **no fall
+  or other extra damage**. Launched entities get fall immunity, and the release sets victims down
+  with a short slow-falling grace and **restores their breath bar**, so nothing drowns after the
+  ability is over.
+* **Death is a release**: with the victim killed inside, the cube drops them from its trapped list
+  (still `phase=contain`), keeps running for anyone left inside, and the respawn is not dragged
+  back into the water.
+* The same containment works in open water: the cube sealed a swimmer inside a deep pool, drowned
+  them for the full three hearts (5 hits) and released them alive with a restored breath bar.
+* World-safety test on a real world, driving the **full hover → slam → contain** lifecycle: the
   cube changed 1000 blocks to water while hovering, dropped four blocks, preserved a solid stone
   block and the **text of a sign** inside the cube, and after the collapse every one of the 6069
   monitored blocks matched its original `BlockData` string exactly — zero mismatches, zero
-  leftover water.
+  leftover water. The landing slam that fires during that test also left zero un-cancelled
+  placements, and the same test passes with the slam enabled.

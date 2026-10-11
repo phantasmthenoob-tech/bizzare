@@ -10,11 +10,13 @@ import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
+import org.bukkit.event.entity.EntityChangeBlockEvent;
 import org.bukkit.event.entity.EntityDamageEvent;
 import org.bukkit.event.entity.EntityRegainHealthEvent;
 import org.bukkit.event.entity.EntityTeleportEvent;
 import org.bukkit.event.entity.ProjectileLaunchEvent;
 import org.bukkit.event.player.PlayerCommandPreprocessEvent;
+import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.event.player.PlayerMoveEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.event.player.PlayerTeleportEvent;
@@ -185,13 +187,23 @@ public final class ProtectionListener implements Listener {
         }
     }
 
-    /** No fall damage while surfing, nor during the short grace period afterwards. */
+    /**
+     * No fall damage while surfing (nor during the short grace period afterwards),
+     * and none for an entity that was just launched by a Tidal Core slam: the slam
+     * itself is the only damage the blast deals.
+     */
     @EventHandler(priority = EventPriority.LOW, ignoreCancelled = true)
     public void onFall(EntityDamageEvent event) {
         if (event.getCause() != EntityDamageEvent.DamageCause.FALL) {
             return;
         }
-        if (!(event.getEntity() instanceof Player player)) {
+        Entity entity = event.getEntity();
+        if (plugin.coreManager().shockwave().hasFallImmunity(entity)) {
+            event.setCancelled(true);
+            entity.setFallDistance(0.0F);
+            return;
+        }
+        if (!(entity instanceof Player player)) {
             return;
         }
         if (plugin.surfManager().isSurfing(player) || plugin.surfManager().hasFallImmunity(player)) {
@@ -200,10 +212,25 @@ public final class ProtectionListener implements Listener {
         }
     }
 
+    /** Shockwave debris may never place itself back into the world. */
+    @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
+    public void onDebrisLand(EntityChangeBlockEvent event) {
+        if (plugin.coreManager().shockwave().isDebris(event.getEntity().getUniqueId())) {
+            event.setCancelled(true);
+        }
+    }
+
+    /** A player who relogs mid-cooldown gets their recharge bar back. */
+    @EventHandler
+    public void onJoin(PlayerJoinEvent event) {
+        plugin.cooldownBars().onJoin(event.getPlayer());
+    }
+
     @EventHandler
     public void onQuit(PlayerQuitEvent event) {
         Player player = event.getPlayer();
         plugin.surfManager().clear(player);
+        plugin.cooldownBars().onQuit(player);
         plugin.cooldowns().save();
     }
 }

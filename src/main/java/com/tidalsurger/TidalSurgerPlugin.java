@@ -1,6 +1,7 @@
 package com.tidalsurger;
 
 import com.tidalsurger.ability.AbilityService;
+import com.tidalsurger.ability.CooldownBars;
 import com.tidalsurger.ability.CooldownStore;
 import com.tidalsurger.command.TidalSurgerCommand;
 import com.tidalsurger.config.PluginSettings;
@@ -30,6 +31,7 @@ public final class TidalSurgerPlugin extends JavaPlugin {
     private NamespacedKey instanceKey;
     private TidalSurgerItem itemFactory;
     private CooldownStore cooldowns;
+    private CooldownBars cooldownBars;
     private TidalCoreManager coreManager;
     private TidalSurfManager surfManager;
     private AbilityService abilities;
@@ -44,6 +46,7 @@ public final class TidalSurgerPlugin extends JavaPlugin {
         this.instanceKey = new NamespacedKey(this, "tidal_surger_id");
 
         this.cooldowns = new CooldownStore(this);
+        this.cooldownBars = new CooldownBars(this);
         this.itemFactory = new TidalSurgerItem(this);
         this.coreManager = new TidalCoreManager(this);
         this.surfManager = new TidalSurfManager(this);
@@ -52,6 +55,7 @@ public final class TidalSurgerPlugin extends JavaPlugin {
         this.cooldowns.load();
         this.surfManager.start();
         this.coreManager.start();
+        this.cooldownBars.start();
 
         getServer().getPluginManager().registerEvents(new InputListener(this), this);
         getServer().getPluginManager().registerEvents(new ProtectionListener(this), this);
@@ -76,6 +80,9 @@ public final class TidalSurgerPlugin extends JavaPlugin {
         if (coreManager != null) {
             coreManager.shutdown();
         }
+        if (cooldownBars != null) {
+            cooldownBars.shutdown();
+        }
         if (cooldowns != null) {
             cooldowns.save();
         }
@@ -97,6 +104,7 @@ public final class TidalSurgerPlugin extends JavaPlugin {
         mergeConfigDefaults();
         this.settings = new PluginSettings(getConfig());
         this.itemFactory.registerRecipe();
+        this.cooldownBars.reload();
     }
 
     public PluginSettings settings() {
@@ -117,6 +125,10 @@ public final class TidalSurgerPlugin extends JavaPlugin {
 
     public CooldownStore cooldowns() {
         return cooldowns;
+    }
+
+    public CooldownBars cooldownBars() {
+        return cooldownBars;
     }
 
     public TidalCoreManager coreManager() {
