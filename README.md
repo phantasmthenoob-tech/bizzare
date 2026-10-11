@@ -10,7 +10,7 @@ Shift + F    ->  Tidal Core   (20s cooldown)  slam a 10x10 water cube onto the t
 ```
 
 While an ability is recharging a **blue BossBar at the top of the screen** drains with the remaining
-cooldown and shows the seconds left.
+cooldown and shows the seconds left; `/ts cooldown [player]` wipes a cooldown and its bar instantly.
 
 The finished plugin jar is built to **`target/TidalSurger.jar`** (a ready-to-use copy also lives at
 `dist/TidalSurger.jar`).
@@ -133,14 +133,18 @@ A 10x10 water cube that hovers over the target's head, slams into the ground on 
 
 * Use an ability and a **blue BossBar appears at the top of the screen** (`cooldown-bar.*`).
 * Its fill is exactly the remaining fraction of the cooldown, so it **drains as the time runs out**,
-  and its title shows the ability name and the remaining seconds (`<aqua>%ability% <dark_gray>|
-  <white>%seconds%s` by default).
+  and its bold title shows the ability name and the remaining seconds (`<aqua><bold>%ability%</bold>
+  <dark_gray>| <white>%seconds%s` by default). Dropping `%seconds%` from the title gives a plain
+  bold ability-name bar that just drains when you only want the bar, like the ext-resources one.
 * When the ability becomes usable the bar flips to the `<green>ready` title for a moment
   (`ready-linger-ticks`) and then disappears.
 * Each ability gets its own bar, so having both on cooldown shows both stacked at the top; colour
   (`color: BLUE`), style, titles and refresh rate are all configurable.
 * Cooldowns are per player, per ability and persisted, so a relogging player gets their recharge
   bar back at the correct progress.
+* `/tidalsurger cooldown [player]` (with tab completion, `tidalsurger.command.cooldown`) clears a
+  player's cooldowns and **removes their draining bars at once**, so both abilities are usable
+  again immediately — the same instant clear `/cooldown` does in the ext-resources jar.
 
 ---
 
@@ -170,6 +174,7 @@ The plugin never permanently changes or destroys the world:
 |---|---|---|
 | `/tidalsurger give [player]` | `tidalsurger.command.give` | Gives the Tidal Surger (aliases `/ts`, `/tidalsurge`) |
 | `/tidalsurger info` | — | Shows both ability cooldowns for the sender |
+| `/tidalsurger cooldown [player]` | `tidalsurger.command.cooldown` | Clears a player's ability cooldowns and drops their bars instantly |
 | `/tidalsurger cubes` | `tidalsurger.command.debug` | Lists active water cubes and their victims |
 | `/tidalsurger reload` | `tidalsurger.command.reload` | Reloads `config.yml` and safely re-registers the recipe |
 
@@ -183,6 +188,7 @@ The plugin never permanently changes or destroys the world:
 | `tidalsurger.bypass.cooldown` | `op` | Ignores both cooldowns (and the item cooldown overlay) |
 | `tidalsurger.bypass.trap` | `op` | Cannot be trapped inside a water cube |
 | `tidalsurger.command.give` | `op` | `/ts give` |
+| `tidalsurger.command.cooldown` | `op` | `/ts cooldown` |
 | `tidalsurger.command.reload` | `op` | `/ts reload` |
 | `tidalsurger.command.debug` | `op` | `/ts cubes` |
 | `tidalsurger.*` | `op` | Everything above |
@@ -209,8 +215,9 @@ The plugin never permanently changes or destroys the world:
   `edge-particles`, `accent-particles`, `ambient-particles`, `skip-materials`, plus the landing slam
   block `shockwave` — `enabled`, `radius`, `block-count`, `block-launch`, `block-lifetime-ticks`,
   `damage`, `launch`, `knockback`, `shake`, `shake-ticks`, `fall-immunity-ticks`, `effects`.
-* **cooldown-bar** — `enabled`, `color` (BLUE), `style`, `title`, `ready-title`,
-  `ready-linger-ticks`, `update-interval-ticks`.
+* **cooldown-bar** — `enabled`, `color` (BLUE), `style`, `title` (bold ability name + seconds;
+  drop `%seconds%` for a plain name bar), `ready-title`, `ready-linger-ticks`,
+  `update-interval-ticks`.
 * An existing `config.yml` is **merged with new keys on startup**, so updating the plugin never
   leaves you on "Missing message" fallbacks — new settings simply appear in your file.
 * **item** — display name, lore (MiniMessage), custom model data, glow, unbreakable flag,
@@ -283,14 +290,28 @@ src/main/java/com/tidalsurger/
 
 ### Cooldown bar
 
-* Using Tidal Surf creates a **blue BossBar at the top of the screen**. While the 10 s cooldown ran
-  its fill drained **0.73 → 0.49 → 0.34**, its title counted down (`Tidal Surf | 10.0s` at the
-  start) and a second `F` was refused with `Tidal Surf | 7.3s remaining.`
-* When the cooldown ended the bar flipped to `Tidal Surf ready` and disappeared 1.0 s later.
-* Relogging in the middle of a cooldown rebuilt the bar from the persisted cooldown at the correct
-  progress (measured fill 0.20 with `Tidal Surf | 1.9s` left).
+* Using Tidal Surf creates a **blue BossBar at the top of the screen the moment the ability fires**
+  (`bossBarCreated`, color blue, before the next tick). While the 10 s cooldown ran its fill drained
+  **0.81 → 0.46** with the title counting down in step (`Tidal Surf | 8.1s` → `Tidal Surf | 4.6s`,
+  starting at `Tidal Surf | 10.0s`, fill 1.00) and a second `F` was refused with
+  `Tidal Surf | 3.1s remaining.`
+* When the cooldown ended the bar flipped to `Tidal Surf ready` and disappeared 1.0 s later
+  (`ready-linger-ticks: 20`).
+* Replacing the default title with the plain bold name (`title: "<aqua><bold>%ability%</bold>"`)
+  gives a bar titled exactly `Tidal Surf` that still drains (1.00 → 0.44) before the ready flash, so
+  the countdown text is optional and the fill never depends on it.
+* `/ts cooldown BarBot` **deleted the draining bar in the same tick** (measured `deleted 0.0s after
+  the command`), the console was told `Cleared BarBot's ability cooldowns.` and the player was
+  notified `Your ability cooldowns were cleared by CONSOLE.`; the ability was usable again right
+  afterwards. An in-game operator clearing their own cooldowns got `Your ability cooldowns have
+  been cleared!`, and a console call without a player name got `Only a player can use this command.`
+* An **older `config.yml` without the new messages** boots clean on the updated plugin — with the
+  three `cooldown-cleared-*` keys stripped from the file, the server logged **no `Missing message`
+  fallback even without a `/ts reload`**: defaults are saved and merged on startup.
 * Tidal Core behaves the same way: `Tidal Core | 20.0s` on cast, drained 1.00 → 0.58 during the
   cooldown, and a second `Shift + F` was refused with `Tidal Core | 19.4s remaining.`
+* Relogging in the middle of a cooldown rebuilt the bar from the persisted cooldown at the correct
+  progress (measured fill 0.20 with `Tidal Surf | 1.9s` left).
 
 ### Landing slam (Paladin-style ground shockwave)
 

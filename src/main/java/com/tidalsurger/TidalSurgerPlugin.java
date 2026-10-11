@@ -92,10 +92,18 @@ public final class TidalSurgerPlugin extends JavaPlugin {
     /**
      * Adds any key that is new in this plugin version to an existing config.yml,
      * so upgrading never leaves the plugin on "Missing message" fallbacks.
+     *
+     * <p>Saving writes every default into the file, and the {@code reloadConfig()}
+     * at the end re-reads that completed file. Both steps matter: the config object
+     * built by the plugin constructor only holds the keys that were already in the
+     * file, so without the re-read every key added by an update would read as
+     * "Missing message: ..." (or fall back to a stale setting) until the server
+     * reloaded the plugin.</p>
      */
     private void mergeConfigDefaults() {
         getConfig().options().copyDefaults(true);
         saveConfig();
+        reloadConfig();
     }
 
     /** Rebuilds the settings snapshot and the crafting recipe from disk. */

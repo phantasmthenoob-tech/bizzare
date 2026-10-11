@@ -74,6 +74,21 @@ public final class CooldownBars {
         }
     }
 
+    /**
+     * Drops every bar of one player at once, e.g. when their cooldowns were
+     * cleared by {@code /ts cooldown}. The next tick would remove an expired bar
+     * anyway; this makes it disappear the instant the cooldown is gone.
+     */
+    public void clear(Player player) {
+        EnumMap<AbilityType, Entry> entries = bars.remove(player.getUniqueId());
+        if (entries == null) {
+            return;
+        }
+        for (Entry entry : entries.values()) {
+            entry.bar.removeAll();
+        }
+    }
+
     /** Called right after an ability was used, so its bar starts draining at once. */
     public void onCooldownStarted(Player player, AbilityType type) {
         if (!plugin.settings().cooldownBar.enabled) {

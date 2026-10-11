@@ -12,6 +12,7 @@ commands:
     usage: |
       /tidalsurger give [player] - receive the Tidal Surger
       /tidalsurger info - show ability status and cooldowns
+      /tidalsurger cooldown [player] - clear ability cooldowns (own, or another player's)
       /tidalsurger cubes - list the active water cubes
       /tidalsurger reload - reload config.yml
     aliases: [ ts, tidalsurge ]
@@ -35,6 +36,9 @@ permissions:
   tidalsurger.command.give:
     description: Allows using /tidalsurger give.
     default: op
+  tidalsurger.command.cooldown:
+    description: Allows using /tidalsurger cooldown to clear ability cooldowns.
+    default: op
   tidalsurger.command.reload:
     description: Allows using /tidalsurger reload.
     default: op
@@ -51,5 +55,6 @@ permissions:
       tidalsurger.bypass.cooldown: true
       tidalsurger.bypass.trap: true
       tidalsurger.command.give: true
+      tidalsurger.command.cooldown: true
       tidalsurger.command.reload: true
       tidalsurger.command.debug: true

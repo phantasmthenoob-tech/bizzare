@@ -6,6 +6,7 @@ import com.tidalsurger.config.Messages;
 import com.tidalsurger.core.WaterCube;
 import com.tidalsurger.util.Text;
 import org.bukkit.Bukkit;
+import org.bukkit.Material;
 import org.bukkit.Sound;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
@@ -43,6 +44,7 @@ public final class TidalSurgerCommand implements CommandExecutor, TabCompleter {
             case "give" -> give(sender, args);
             case "reload" -> reload(sender);
             case "info" -> info(sender);
+            case "cooldown" -> cooldown(sender, args);
             case "cubes" -> cubes(sender);
             default -> {
                 messages.send(sender, "unknown-command");
@@ -83,6 +85,47 @@ public final class TidalSurgerCommand implements CommandExecutor, TabCompleter {
         messages.send(target, "give-self", "item", displayName);
         if (!target.equals(sender)) {
             messages.send(sender, "give-other", "player", target.getName(), "item", displayName);
+        }
+    }
+
+    /**
+     * {@code /ts cooldown [player]} - wipes a player's ability cooldowns and the
+     * boss bars that are draining for them, so both abilities are usable again at
+     * once. Clearing your own cooldowns needs no target.
+     */
+    private void cooldown(CommandSender sender, String[] args) {
+        if (!sender.hasPermission("tidalsurger.command.cooldown")) {
+            messages.send(sender, "no-permission");
+            return;
+        }
+        Player target;
+        if (args.length >= 2) {
+            target = Bukkit.getPlayerExact(args[1]);
+            if (target == null) {
+                messages.send(sender, "player-not-found", "player", args[1]);
+                return;
+            }
+        } else if (sender instanceof Player self) {
+            target = self;
+        } else {
+            messages.send(sender, "player-only");
+            return;
+        }
+
+        for (AbilityType type : AbilityType.values()) {
+            plugin.cooldowns().clear(target, type);
+        }
+        plugin.cooldowns().save();
+        // The draining boss bars go away at once, not on their next expiry tick.
+        plugin.cooldownBars().clear(target);
+        // ...and so does the vanilla item-cooldown overlay on the trident.
+        target.setCooldown(Material.TRIDENT, 0);
+
+        if (target.equals(sender)) {
+            messages.send(target, "cooldown-cleared-self");
+        } else {
+            messages.send(sender, "cooldown-cleared-other", "player", target.getName());
+            messages.send(target, "cooldown-cleared-notify", "player", sender.getName());
         }
     }
 
@@ -139,6 +182,7 @@ public final class TidalSurgerCommand implements CommandExecutor, TabCompleter {
         messages.send(sender, "info-usage");
         sender.sendMessage(Text.mm("<gray>/" + label + " give [player] <dark_gray>| <gray>receive the Tidal Surger"));
         sender.sendMessage(Text.mm("<gray>/" + label + " info <dark_gray>| <gray>ability status"));
+        sender.sendMessage(Text.mm("<gray>/" + label + " cooldown [player] <dark_gray>| <gray>clear ability cooldowns"));
         sender.sendMessage(Text.mm("<gray>/" + label + " cubes <dark_gray>| <gray>list active water cubes"));
         sender.sendMessage(Text.mm("<gray>/" + label + " reload <dark_gray>| <gray>reload config.yml"));
     }
@@ -147,12 +191,12 @@ public final class TidalSurgerCommand implements CommandExecutor, TabCompleter {
     public List<String> onTabComplete(@NotNull CommandSender sender, @NotNull Command command, @NotNull String alias, @NotNull String[] args) {
         List<String> suggestions = new ArrayList<>();
         if (args.length == 1) {
-            for (String option : List.of("give", "info", "cubes", "reload")) {
+            for (String option : List.of("give", "info", "cooldown", "cubes", "reload")) {
                 if (option.startsWith(args[0].toLowerCase(Locale.ROOT))) {
                     suggestions.add(option);
                 }
             }
-        } else if (args.length == 2 && args[0].equalsIgnoreCase("give")) {
+        } else if (args.length == 2 && (args[0].equalsIgnoreCase("give") || args[0].equalsIgnoreCase("cooldown"))) {
             for (Player player : Bukkit.getOnlinePlayers()) {
                 if (player.getName().toLowerCase(Locale.ROOT).startsWith(args[1].toLowerCase(Locale.ROOT))) {
                     suggestions.add(player.getName());

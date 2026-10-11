@@ -224,9 +224,9 @@ item:
 # --------------------------------------------------------------------------
 #  Ability cooldown bar
 #
-#  While an ability is recharging a blue BossBar is shown at the top of the
-#  screen. It drains with the remaining time and shows the ability name and the
-#  seconds left, then flips to the "ready" title for a moment and disappears.
+#  While an ability is recharging a BossBar is shown at the top of the screen. It
+#  drains with the remaining time and its title is the bold ability name plus the
+#  seconds left, then it flips to the "ready" title for a moment and disappears.
 #  Each ability gets its own bar, so both can be tracked at once.
 # --------------------------------------------------------------------------
 cooldown-bar:
@@ -237,9 +237,10 @@ cooldown-bar:
   style: SOLID
   # Title while recharging. %ability% = ability name, %seconds% = time left.
   # The bar's fill is exactly the remaining fraction of the cooldown.
-  title: "<aqua>%ability% <dark_gray>| <white>%seconds%s"
+  # Drop %seconds% entirely for a plain bold ability-name bar that just drains.
+  title: "<aqua><bold>%ability%</bold> <dark_gray>| <white>%seconds%s"
   # Title flashed for a moment once the ability is usable again.
-  ready-title: "<aqua>%ability% <green>ready"
+  ready-title: "<aqua><bold>%ability%</bold> <green>ready"
   # How long the ready title lingers before the bar disappears.
   ready-linger-ticks: 20
   # Refresh rate of the bars, in ticks.
@@ -268,6 +269,9 @@ messages:
   cannot-escape: "<red>The tidal barrier refuses to let you pass."
   blocked-command: "<red>Teleportation is sealed inside the Tidal Core."
   reloaded: "<green>Configuration reloaded."
+  cooldown-cleared-self: "<aqua>Your ability cooldowns have been cleared!"
+  cooldown-cleared-other: "<aqua>Cleared <white>%player%<aqua>'s ability cooldowns."
+  cooldown-cleared-notify: "<aqua>Your ability cooldowns were cleared by <white>%player%<aqua>."
   give-self: "<aqua>You feel the weight of the deep: <white>%item%<aqua>."
   give-other: "<aqua>Gave <white>%item%<aqua> to <white>%player%<aqua>."
   player-not-found: "<red>Player <white>%player% <red>is not online."
