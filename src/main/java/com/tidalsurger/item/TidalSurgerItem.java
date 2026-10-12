@@ -19,13 +19,27 @@ import java.util.Locale;
 import java.util.UUID;
 
 /**
- * Builds the legendary Tidal Surger trident and recognises existing copies.
+ * Builds the legendary Tidal Surger and recognises existing copies.
+ *
+ * <p>The Tidal Surger is a <b>netherite sword</b> that wears the legendary
+ * trident's skin: the base material is {@link Material#NETHERITE_SWORD}, so it
+ * fights with the netherite sword's damage, attack speed and sweeping, while the
+ * {@code minecraft:item_model} component points the client at the vanilla
+ * {@code minecraft:trident} item model. That model (and the resource pack's
+ * {@code custom_model_data 1011} branch inside it) is what makes the sword look
+ * exactly like the special trident, in the hand and in the inventory.</p>
  *
  * <p>Identity comes from a {@link org.bukkit.persistence.PersistentDataContainer}
- * tag, never from the display name, so a renamed or anvil-modified trident still
- * counts as a Tidal Surger while every ordinary trident is ignored.</p>
+ * tag, never from the display name, so a renamed or anvil-modified weapon still
+ * counts as a Tidal Surger while every ordinary netherite sword and trident is
+ * ignored.</p>
  */
 public final class TidalSurgerItem {
+
+    /** Identifies the Tidal Surger; the tag alone is what really matters. */
+    private static boolean isBaseMaterial(Material material) {
+        return material == Material.NETHERITE_SWORD || material == Material.TRIDENT;
+    }
 
     private final TidalSurgerPlugin plugin;
 
@@ -34,7 +48,7 @@ public final class TidalSurgerItem {
     }
 
     public boolean isTidalSurger(ItemStack stack) {
-        if (stack == null || stack.getType() != Material.TRIDENT) {
+        if (stack == null || !isBaseMaterial(stack.getType())) {
             return false;
         }
         ItemMeta meta = stack.getItemMeta();
@@ -42,7 +56,7 @@ public final class TidalSurgerItem {
     }
 
     public String instanceId(ItemStack stack) {
-        if (stack == null || stack.getType() != Material.TRIDENT) {
+        if (stack == null || !isBaseMaterial(stack.getType())) {
             return null;
         }
         ItemMeta meta = stack.getItemMeta();
@@ -53,11 +67,12 @@ public final class TidalSurgerItem {
     }
 
     /**
-     * Creates a fresh Tidal Surger. Each copy carries its own unique instance id
-     * so worlds/logs can tell two legendary tridents apart.
+     * Creates a fresh Tidal Surger: a netherite sword rendered with the trident's
+     * model. Each copy carries its own unique instance id so worlds/logs can tell
+     * two Tidal Surgers apart.
      */
     public ItemStack create() {
-        ItemStack stack = new ItemStack(Material.TRIDENT);
+        ItemStack stack = new ItemStack(Material.NETHERITE_SWORD);
         ItemMeta meta = stack.getItemMeta();
         if (meta == null) {
             return stack;
@@ -72,6 +87,10 @@ public final class TidalSurgerItem {
         if (!lore.isEmpty()) {
             meta.lore(lore);
         }
+
+        // The disguise: the client renders this netherite sword with the trident's
+        // item model, which is also where the resource pack's custom skin lives.
+        applyItemModel(meta);
 
         int customModelData = plugin.getConfig().getInt("item.custom-model-data", 0);
         if (customModelData > 0) {
@@ -93,6 +112,28 @@ public final class TidalSurgerItem {
 
         stack.setItemMeta(meta);
         return stack;
+    }
+
+    private void applyItemModel(ItemMeta meta) {
+        String configured = plugin.getConfig().getString("item.item-model", "minecraft:trident");
+        if (configured == null || configured.isBlank()) {
+            return;
+        }
+        String id = configured.trim().toLowerCase(Locale.ROOT);
+        if (!id.contains(":")) {
+            id = "minecraft:" + id;
+        }
+        NamespacedKey model;
+        try {
+            model = NamespacedKey.fromString(id);
+        } catch (IllegalArgumentException invalid) {
+            model = null;
+        }
+        if (model == null) {
+            plugin.getLogger().warning("Invalid item.item-model '" + configured + "'; the item keeps its default model.");
+            return;
+        }
+        meta.setItemModel(model);
     }
 
     @SuppressWarnings("deprecation")

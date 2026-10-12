@@ -11,7 +11,7 @@
     <packaging>jar</packaging>
 
     <name>TidalSurger</name>
-    <description>Legendary Tidal Surger trident with Tidal Surf and Tidal Core abilities for Paper 1.21.11</description>
+    <description>Tidal Surger - a netherite sword wearing the trident's skin, with Tidal Surf and Tidal Core abilities for Paper 1.21.11</description>
 
     <properties>
         <java.version>21</java.version>

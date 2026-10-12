@@ -17,7 +17,8 @@ import org.bukkit.inventory.ItemStack;
 import org.bukkit.plugin.java.JavaPlugin;
 
 /**
- * TidalSurger - a legendary ocean trident for Paper 1.21.11.
+ * TidalSurger - a netherite sword disguised as the legendary ocean trident for
+ * Paper 1.21.11.
  *
  * <ul>
  *   <li><b>Tidal Surf</b> (offhand key): ride a water wave forward for five

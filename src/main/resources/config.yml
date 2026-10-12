@@ -28,9 +28,10 @@ input:
   # held in the main hand. Set false to also allow it while held in the offhand.
   require-item-in-main-hand: true
   # Optional fallback trigger for clients that remapped their swap key:
-  # right-click (sneak + right-click for Tidal Core) while holding the trident.
+  # right-click (sneak + right-click for Tidal Core) while holding the Tidal Surger.
   right-click-fallback: false
-  # Show the vanilla item-cooldown overlay on the trident while recharging.
+  # Show the vanilla item-cooldown overlay while recharging. The overlay is keyed
+  # by material, so it dims every netherite sword in the inventory for its duration.
   show-item-cooldown: true
 
 # --------------------------------------------------------------------------
@@ -45,7 +46,7 @@ abilities:
   tidal-surf:
     enabled: true
     permission: tidalsurger.ability.surf
-    cooldown-seconds: 10
+    cooldown-seconds: 2
     # How long the ride lasts (20 ticks = 1 second). 100 ticks = 5 seconds.
     duration-ticks: 100
     # Forward carry speed in blocks per tick.
@@ -75,7 +76,7 @@ abilities:
   tidal-core:
     enabled: true
     permission: tidalsurger.ability.core
-    cooldown-seconds: 20
+    cooldown-seconds: 4
     # Horizontal size of the water cube in blocks.
     size: 10
     # Vertical size of the cube in blocks (lower it for a flatter water slab).
@@ -194,37 +195,48 @@ abilities:
       effects: true
 
 # --------------------------------------------------------------------------
-#  The Tidal Surger trident itself
+#  The Tidal Surger itself
+#
+#  Gameplay-wise it is a NETHERITE SWORD: it hits with the sword's damage,
+#  attack speed and sweeping. Visually it is the special trident, because the
+#  item carries the "minecraft:trident" item model below, which is also what
+#  lets the resource pack's custom_model_data 1011 skin apply to it.
 # --------------------------------------------------------------------------
 item:
   name: "<gradient:#0b2f4f:#7fe9ff><bold>Tidal Surger</bold></gradient>"
   lore:
     - "<dark_aqua>» <aqua>Legendary Trident of the Deep"
     - "<gray>Forged where the trench meets the light."
+    - "<italic><dark_gray>Wears the trident's shape; cuts like netherite."
     - ""
-    - "<dark_aqua>F <gray>» <aqua>Tidal Surf <dark_gray>(10s)"
-    - "<dark_aqua>Shift + F <gray>» <aqua>Tidal Core <dark_gray>(20s)"
+    - "<dark_aqua>F <gray>» <aqua>Tidal Surf <dark_gray>(2s)"
+    - "<dark_aqua>Shift + F <gray>» <aqua>Tidal Core <dark_gray>(4s)"
     - "<gray>Drops a <aqua>10x10 <gray>cube of water on your target."
     - ""
     - "<italic><dark_gray>The ocean answers only this blade."
+  # The item model the client renders the netherite sword with. "minecraft:trident"
+  # gives it the trident's model; the resource pack then swaps in the 1011 skin.
+  item-model: "minecraft:trident"
   custom-model-data: 1011
   glowing: true
   unbreakable: true
-  # <enchantment_key>:<level>
+  # <enchantment_key>:<level> - sword enchantments, since the item is a sword.
   enchantments:
-    - "loyalty:3"
-    - "impaling:5"
+    - "sharpness:5"
+    - "looting:3"
+    - "fire_aspect:2"
     - "unbreaking:3"
     - "mending:1"
   recipe:
     enabled: true
-    # Shaped recipe, keys: T = trident, P = prismarine shard, S = nautilus shell
+    # Shaped recipe, keys: T = netherite sword (the blade), P = prismarine shard,
+    # S = nautilus shell. The centre slot binds the tide to a netherite sword.
     shape:
       - "PSP"
       - "STS"
       - "PSP"
     ingredients:
-      T: TRIDENT
+      T: NETHERITE_SWORD
       P: PRISMARINE_SHARD
       S: NAUTILUS_SHELL
 

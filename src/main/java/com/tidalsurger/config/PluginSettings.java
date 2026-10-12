@@ -89,7 +89,7 @@ public final class PluginSettings {
             String base = "abilities.tidal-surf.";
             this.enabled = config.getBoolean(base + "enabled", true);
             this.permission = config.getString(base + "permission", AbilityType.TIDAL_SURF.defaultPermission());
-            this.cooldownSeconds = Math.max(0, config.getInt(base + "cooldown-seconds", 10));
+            this.cooldownSeconds = Math.max(0, config.getInt(base + "cooldown-seconds", 2));
             this.durationTicks = Math.max(20, config.getInt(base + "duration-ticks", 100));
             this.speed = clamp(config.getDouble(base + "speed", 0.78), 0.05, 3.0);
             this.lift = clamp(config.getDouble(base + "lift", 0.22), 0.0, 1.0);
@@ -146,7 +146,7 @@ public final class PluginSettings {
             String base = "abilities.tidal-core.";
             this.enabled = config.getBoolean(base + "enabled", true);
             this.permission = config.getString(base + "permission", AbilityType.TIDAL_CORE.defaultPermission());
-            this.cooldownSeconds = Math.max(0, config.getInt(base + "cooldown-seconds", 20));
+            this.cooldownSeconds = Math.max(0, config.getInt(base + "cooldown-seconds", 4));
             this.size = Math.max(3, Math.min(24, config.getInt(base + "size", 10)));
             this.height = Math.max(1, Math.min(24, config.getInt(base + "height", 10)));
             this.hoverHeight = Math.max(0, Math.min(32, config.getInt(base + "hover-height", 4)));

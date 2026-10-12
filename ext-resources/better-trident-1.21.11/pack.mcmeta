@@ -1,0 +1,8 @@
+{
+  "pack": {
+    "description": "Better Trident (Tidal Surger) - 1.21.11. Only the Tidal Surger (custom_model_data 1011) is customised; every other trident stays vanilla.",
+    "pack_format": 75,
+    "min_format": 69,
+    "max_format": 75
+  }
+}

@@ -3,7 +3,7 @@ version: '1.0.0'
 main: com.tidalsurger.TidalSurgerPlugin
 api-version: '1.21'
 authors: [ TidalSurger ]
-description: Legendary ocean trident with the Tidal Surf and Tidal Core abilities.
+description: A netherite sword wearing the legendary ocean trident's skin, with the Tidal Surf and Tidal Core abilities.
 website: https://papermc.io
 
 commands:

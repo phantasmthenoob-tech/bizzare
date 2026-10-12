@@ -118,8 +118,8 @@ public final class TidalSurgerCommand implements CommandExecutor, TabCompleter {
         plugin.cooldowns().save();
         // The draining boss bars go away at once, not on their next expiry tick.
         plugin.cooldownBars().clear(target);
-        // ...and so does the vanilla item-cooldown overlay on the trident.
-        target.setCooldown(Material.TRIDENT, 0);
+        // ...and so does the vanilla item-cooldown overlay on the Tidal Surger.
+        target.setCooldown(Material.NETHERITE_SWORD, 0);
 
         if (target.equals(sender)) {
             messages.send(target, "cooldown-cleared-self");

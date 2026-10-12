@@ -58,7 +58,7 @@ public final class AbilityService {
         if (success && !bypass) {
             plugin.cooldowns().set(player, type, ability.cooldownSeconds());
             if (settings.input.showItemCooldown) {
-                player.setCooldown(Material.TRIDENT, ability.cooldownSeconds() * 20);
+                player.setCooldown(Material.NETHERITE_SWORD, ability.cooldownSeconds() * 20);
             }
             if (ability.cooldownSeconds() > 0) {
                 plugin.cooldownBars().onCooldownStarted(player, type);

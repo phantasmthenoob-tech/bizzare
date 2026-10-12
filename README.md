@@ -1,11 +1,17 @@
 # Tidal Surger
 
-A complete, production-ready **Paper 1.21.11** plugin adding a legendary ocean trident with two
-abilities: **Tidal Surf** and **Tidal Core**.
+A complete, production-ready **Paper 1.21.11** plugin adding the legendary **Tidal Surger** — a
+**netherite sword that wears the special trident's skin** — with two abilities: **Tidal Surf** and
+**Tidal Core**.
+
+The disguise is the vanilla `minecraft:item_model` component (config `item.item-model`). The base
+material is `NETHERITE_SWORD`, so it hits with the sword's damage, attack speed and sweeping; the
+item model is `minecraft:trident`, so the client renders it exactly like a trident in the hand, in
+the inventory and on the ground. The bundled resource pack then swaps in the custom skin on top.
 
 ```
-F            ->  Tidal Surf   (10s cooldown)  ride a steerable water wave (WASD, Space climbs, Shift dives)
-Shift + F    ->  Tidal Core   (20s cooldown)  drop a 10x10 water cube that descends until it hits the ground
+F            ->  Tidal Surf   (2s cooldown)   ride a steerable water wave (WASD, Space climbs, Shift dives)
+Shift + F    ->  Tidal Core   (4s cooldown)   drop a 10x10 water cube that descends until it hits the ground
                                               or a target, shake the ground, and drown the victim for 3 hearts
 ```
 
@@ -71,7 +77,7 @@ sneak + right-click while holding the trident.
 
 ## 4. Abilities
 
-### Tidal Surf — offhand key, 10 s cooldown
+### Tidal Surf — offhand key, 2 s cooldown
 * Raises a flowing wave in front of the caster and carries them forward for exactly 5 s
   (`duration-ticks`, default 100).
 * The wave leads: its crest and its real temporary water ride 2–4 blocks ahead of the surfer
@@ -86,7 +92,7 @@ sneak + right-click while holding the trident.
 * **No fall damage**: fall distance is reset every tick during the ride, and fall damage stays
   cancelled for `fall-immunity-ticks` (45 ticks ≈ 2.25 s) after the ride ends.
 
-### Tidal Core — Shift + offhand key, 20 s cooldown
+### Tidal Core — Shift + offhand key, 4 s cooldown
 A 10x10 water cube that hovers over the target's head, slams into the ground on them and drowns them.
 
 1. **Hover (2.5 s, `hover-ticks: 50`)** — ray-traces the crosshair (30 blocks by default: a living
@@ -242,16 +248,18 @@ relogging cannot reset them.
 
 ---
 
-## 9. Getting the trident in game
+## 9. Getting the Tidal Surger in game
 
 * `/ts give` (OP), or
-* the default crafting recipe — prismarine shards + nautilus shells around a trident
+* the default crafting recipe — prismarine shards + nautilus shells around a **netherite sword**
   (configurable under `item.recipe`), or
 * any loot/kit plugin — just use the item produced by `/ts give` as the template.
 
-The trident is identified by a `PersistentDataContainer` tag (`tidalsurger:tidal_surger`) plus a
-unique per-item id, **not** by its name, so a renamed or anvil-modified copy still works and no
-ordinary trident can ever activate the abilities.
+The Tidal Surger is a `NETHERITE_SWORD` carrying the `minecraft:trident` item model, and it is
+identified by a `PersistentDataContainer` tag (`tidalsurger:tidal_surger`) plus a unique per-item
+id, **not** by its name or looks — so a renamed or anvil-modified copy still works, and no ordinary
+netherite sword or trident can ever activate the abilities. (Copies given by earlier versions are
+plain tridents with the same tag; they still count, so nobody has to hand in an old one.)
 
 ---
 
@@ -278,9 +286,16 @@ src/main/java/com/tidalsurger/
   listener/ProtectionListener.java        escape prevention + fall-damage immunity
   command/TidalSurgerCommand.java         /tidalsurger
   util/                                   MiniMessage text, block snapshots, block safety
+ext-resources/Better Trident v2.1.zip                      original Better Trident upload (untouched)
+ext-resources/better-trident-1.21.11/                     adapted 1.21.11 pack sources (editable)
+ext-resources/Better Trident v2.1 - Tidal Surger (1.21.11).zip          earlier zip (flat icon only, kept)
+ext-resources/Better Trident v2.1 - Tidal Surger (1.21.11 3D spear).zip  current zip (flat icon + 3D spear)
 ```
 
 ## 11. Verification performed
+
+> The harness runs below were recorded with the **then-default** cooldowns (10 s Tidal Surf / 20 s
+> Tidal Core). `cooldown-seconds` now defaults to **2 s / 4 s**; every other observation still holds.
 
 * Built cleanly with Maven against `io.papermc.paper:paper-api:1.21.11-R0.1-SNAPSHOT` on Java 21.
 * Loaded on a real Paper 1.21.11 (build 132) server — no warnings, errors or exceptions.
@@ -304,7 +319,7 @@ src/main/java/com/tidalsurger/
 ### Cooldown bar
 
 * Using Tidal Surf creates a **blue BossBar at the top of the screen the moment the ability fires**
-  (`bossBarCreated`, color blue, before the next tick). While the 10 s cooldown ran its fill drained
+  (`bossBarCreated`, color blue, before the next tick). While the cooldown ran its fill drained
   **0.81 → 0.46** with the title counting down in step (`Tidal Surf | 8.1s` → `Tidal Surf | 4.6s`,
   starting at `Tidal Surf | 10.0s`, fill 1.00) and a second `F` was refused with
   `Tidal Surf | 3.1s remaining.`
@@ -404,3 +419,91 @@ src/main/java/com/tidalsurger/
   delivers its carry to the client as `entity_velocity` pushes.
 * The whole run finished with **no server exceptions** and the only blocked messages were the
   intended ones.
+
+---
+
+## 12. Resource pack — the custom trident skin
+
+The repo ships the **Better Trident v2.1** pack from `ext-resources/`, adapted for **Paper 1.21.11**.
+Only the Tidal Surger gets the custom look; every ordinary trident renders exactly vanilla.
+
+The pack did **not** need to change when the Tidal Surger became a netherite sword: the sword is
+rendered through `minecraft:trident` (`item.item-model`), so it loads the very same
+`assets/minecraft/items/trident.json` below, and the `custom_model_data 1011` branch skins it.
+
+| File | Purpose |
+|---|---|
+| `ext-resources/Better Trident v2.1.zip` | the original upload, kept untouched |
+| `ext-resources/better-trident-1.21.11/` | the adapted pack, unpacked and editable |
+| `ext-resources/Better Trident v2.1 - Tidal Surger (1.21.11).zip` | earlier zip (flat icon only), kept |
+| `ext-resources/Better Trident v2.1 - Tidal Surger (1.21.11 3D spear).zip` | **the ready-to-install pack** |
+
+### What changed from the original
+
+* `pack.mcmeta` now declares the 1.21.11 resource format (`pack_format: 75`, accepted range 69–75)
+  instead of the old format 15, so 1.21.9–1.21.11 clients load it without the "made for an older
+  version" warning.
+* `assets/minecraft/items/trident.json` is the **vanilla 1.21.11 trident item definition** wrapped in
+  a `minecraft:range_dispatch` on `minecraft:custom_model_data` (index 0). Values **≥ 1011** — the
+  `item.custom-model-data` the plugin stamps on every Tidal Surger — use the custom model, and
+  everything below falls through to a byte-for-byte copy of the vanilla definition. **Normal tridents
+  are therefore completely unaffected.**
+* The pack's custom 16×16 trident sprite now lives at `textures/item/tidal_surger.png`, referenced
+  only by the custom model `models/item/tidal_surger.json`. The original override of the global
+  `textures/item/trident.png` (which re-skinned *every* trident icon) is gone.
+* **The 3D spear is converted, not emulated.** The original pack's shape came from **OptiFine CEM**
+  (`assets/minecraft/optifine/cem/trident.jem`), which vanilla clients cannot read and which OptiFine
+  applies to *every* trident with no way to scope it to one item. That geometry now ships as a real,
+  vanilla 1.21.11 item model instead:
+  * `models/item/tidal_surger_spear_geo.json` — 17 elements converted 1:1 from the CEM's
+    `body`/`body2`/`cubosdelado` boxes: the shaft (y 0–25), grip sleeve, collar, cross-piece,
+    spearhead, the 45°-rotated spike cluster at the top and the butt cap. The CEM box coordinates
+    +27 in Y are exactly the vanilla `TridentEntityModel` frame (the pole is the same `uv(0,6)`,
+    `y 0–25`, `1×25×1` box vanilla uses); the 32×32 texture is mapped with the standard box-UV
+    layout and half-scale UVs (`vanilla_uv = px × 16/32`).
+  * `models/item/tidal_surger_spear.json` and `..._spear_throwing.json` — the same geometry with the
+    vanilla `trident_in_hand` / `trident_throwing` display transforms, so the held pose is identical
+    to a vanilla trident's and the pull-back wind-up switches models via `minecraft:using_item`.
+  * `textures/item/tidal_surger_spear.png` — the pack's own 32×32 spear texture, copied verbatim.
+* The **flat 16×16 icon is preserved** for `gui`/`ground`/`fixed`/`on_shelf` — the same split vanilla
+  uses for tridents — so the inventory sprite, the dropped item and item frames are unchanged.
+* No `optifine/` folder, no `.jem` files and no global `textures/item/trident.png` override: the pack
+  is vanilla-only and only touches tridents carrying `custom_model_data ≥ 1011`.
+
+### Known limitations
+
+* **The thrown trident projectile is not affected.** The flying trident is an entity rendered by its
+  own renderer/model, not by the item model definition, so this conversion does not reach it — it
+  still looks like a vanilla trident in flight. The only resource-pack lever there is a *global*
+  override of `textures/entity/trident.png`, which would re-skin every trident in the world, so it is
+  deliberately not used. (With OptiFine the original CEM *did* reskin the flying trident; a
+  vanilla-only pack cannot reproduce that without the global override.)
+* **Not verified in a real client.** Everything here was validated structurally — JSON parsing, model
+  and texture reference resolution, UV rectangles checked against the actual texture pixels, the
+  element list diffed against the converter output, and a software render of the geometry — but the
+  pack has not been loaded by a Minecraft 1.21.11 client. `pack_format`, the `display_context`
+  `on_shelf` value and the vanilla fallback path are all copied from the game's own 1.21.11 files.
+* OptiFine-only extras are not carried over: `optifine/cem/*.jem`, `models/item/*.jem` and the
+  emissive `spear_e.png` companion. Vanilla has no equivalent for those.
+* The CEM declares `base`/`left_spike`/`middle_spike`/`right_spike` with no boxes. If OptiFine keeps
+  vanilla geometry for such parts, its render also includes vanilla's prongs; the converted model
+  uses only the geometry that the `.jem` actually defines.
+* Element coordinates were clamped into vanilla's documented `[-16, 32]` element bounds: a global
+  −0.05 Y offset (0.003 blocks) and one box that sits at local `(-20, -20)` re-expressed rotated
+  about its own centre — geometrically identical, but worth knowing if you diff against the `.jem`.
+* The 45° cluster uses `axis: "z"`, `angle: 45`. If the rotation direction ever looks mirrored
+  in game, flipping that single sign on the 12 cluster elements is the fix.
+* Faces follow the standard Minecraft box-UV layout (`down`/`up` across the top row,
+  `west`/`north`/`east`/`south` below). That layout was validated against the real texture pixels —
+  every one of the 102 face rectangles lands on opaque texels — but that check cannot confirm the
+  *order* of the two cap faces, so a mirrored end-cap is the one remaining cosmetic ambiguity.
+
+### Installing it
+
+1. Upload `Better Trident v2.1 - Tidal Surger (1.21.11 3D spear).zip` to a public HTTPS URL.
+2. Point players at it — either client-side (Options → Resource Packs → drag the zip in), or
+   server-wide by adding to `server.properties`:
+   `resource-pack=<direct url>` and `resource-pack-sha1=<sha1 of the zip>`
+   (`sha1sum "ext-resources/Better Trident v2.1 - Tidal Surger (1.21.11 3D spear).zip"`).
+3. Keep `item.custom-model-data` (default `1011`) and the pack's `threshold` in sync — that single
+   number is what scopes the skin to the Tidal Surger.
